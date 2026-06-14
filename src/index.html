@@ -107,17 +107,17 @@ the Free Software Foundation, either version 3 of the License.
           <button id="btnLanguageSelector" class="btn btn-toolbar-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-i18n-title="tooltip.language" title="Mudar Idioma">
             <span class="material-symbols-outlined">language</span>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="btnLanguageSelector">
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('de'); return false;">Deutsch (de)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('en'); return false;">English (en)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('es'); return false;">Español (es)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('fr'); return false;">Français (fr)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('it'); return false;">Italiano (it)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('pt-BR'); return false;">Português (pt-BR)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ja'); return false;">日本語 (ja)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ko'); return false;">한국어 (ko)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ru'); return false;">Русский (ru)</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('zh-CN'); return false;">简体中文 (zh-CN)</a></li>
+          <ul class="dropdown-menu dropdown-menu-end shadow language-dropdown-menu" aria-labelledby="btnLanguageSelector">
+            <li><a class="dropdown-item py-2" href="#" data-lang="de">Deutsch (de)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="en">English (en)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="es">Español (es)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="fr">Français (fr)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="it">Italiano (it)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="pt-BR">Português (pt-BR)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="ja">日本語 (ja)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="ko">한국어 (ko)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="ru">Русский (ru)</a></li>
+            <li><a class="dropdown-item py-2" href="#" data-lang="zh-CN">简体中文 (zh-CN)</a></li>
           </ul>
         </div>
         <button id="btnToggleSidebar" class="btn btn-toolbar-icon active" data-i18n-title="tooltip.sidebar" title="Exibir/Ocultar Formatação">

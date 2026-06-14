@@ -215,6 +215,7 @@ async function loadLanguage(lang) {
     translations[lang] = await response.json();
   } catch (err) {
     console.error("Error loading language file:", err);
+    alert("Error loading language file for " + lang + ": " + err.message + "\nStack: " + err.stack);
     translations[lang] = translations['pt-BR'] || {};
   }
 }
@@ -257,51 +258,57 @@ function applyTranslations() {
 }
 
 async function switchLanguage(lang) {
-  currentLanguage = lang;
-  localStorage.setItem('sarasara_lang', lang);
-  
-  await loadLanguage(lang);
-  applyTranslations();
+  try {
+    currentLanguage = lang;
+    localStorage.setItem('sarasara_lang', lang);
+    
+    await loadLanguage(lang);
+    applyTranslations();
 
-  // Update native macOS menu and About dialog metadata
-  if (window.__TAURI__ && window.__TAURI__.core) {
-    try {
-      await window.__TAURI__.core.invoke('update_native_menu', { lang });
-    } catch (err) {
-      console.error("Failed to update native menu:", err);
-    }
-  }
-  
-  // Rebuild editor to apply new localized placeholder configurations
-  if (editor) {
-    let savedData = { blocks: [] };
-    try {
-      savedData = await editor.save();
-    } catch (err) {
-      console.warn("Could not save editor state before language switch:", err);
-      if (activeDocId) {
-        const doc = documents.find(d => d.id === activeDocId);
-        if (doc) savedData = doc.blocksData;
+    // Update native macOS menu and About dialog metadata
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('update_native_menu', { lang });
+      } catch (err) {
+        console.error("Failed to update native menu:", err);
       }
-    }
-
-    if (activeDocId) {
-      const doc = documents.find(d => d.id === activeDocId);
-      if (doc) {
-        doc.blocksData = savedData;
-      }
-    }
-
-    isRendering = true;
-    try {
-      await editor.destroy();
-    } catch (e) {
-      console.error("Error destroying editor on switchLanguage:", e);
     }
     
-    initEditor(savedData);
+    // Rebuild editor to apply new localized placeholder configurations
+    if (editor) {
+      let savedData = { blocks: [] };
+      try {
+        savedData = await editor.save();
+      } catch (err) {
+        console.warn("Could not save editor state before language switch:", err);
+        if (activeDocId) {
+          const doc = documents.find(d => d.id === activeDocId);
+          if (doc) savedData = doc.blocksData;
+        }
+      }
+
+      if (activeDocId) {
+        const doc = documents.find(d => d.id === activeDocId);
+        if (doc) {
+          doc.blocksData = savedData;
+        }
+      }
+
+      isRendering = true;
+      try {
+        await editor.destroy();
+      } catch (e) {
+        console.error("Error destroying editor on switchLanguage:", e);
+      }
+      
+      initEditor(savedData);
+    }
+  } catch (err) {
+    console.error("Error in switchLanguage:", err);
+    alert("Error in switchLanguage for " + lang + ": " + err.message + "\nStack: " + err.stack);
   }
 }
+window.switchLanguage = switchLanguage; // Expose globally explicitly
 
 function initEditor(initialData = null) {
   const CodeTool = window.CodeTool;
@@ -626,6 +633,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 3. LISTENERS & SYNC LOGIC
 function setupEventListeners() {
+  // Bind language dropdown menu items
+  document.querySelectorAll('.language-dropdown-menu .dropdown-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const lang = item.getAttribute('data-lang');
+      await switchLanguage(lang);
+    });
+  });
+
   // Intercept Tab key inside Editor.js editable fields to insert indentation instead of triggering Plus block tune button
   document.getElementById('editorjs').addEventListener('keydown', (e) => {
     if (e.key === 'Tab' && !e.shiftKey) {
