@@ -1,6 +1,6 @@
 # SaraSara 📄✨
 
-**SaraSara** é um editor de Markdown minimalista e livre de distrações, projetado no Estilo Apple Pages. Seu nome vem da onomatopeia japonesa **"sara-sara" (さらさら)**, que evoca o som suave e contínuo de um lápis deslizando delicadamente sobre o papel.
+**SaraSara** é um editor de Markdown minimalista e livre de distrações, projetado no Estilo Apple Pages. Seu nome vem da onomatopeia japonesa **"sara-sara" (さらさら)**, que evoca o deslizar fluido, contínuo e sem esforço de uma caneta sobre o papel representando a escrita que flui de forma natural.
 
 Este aplicativo foi criado para escritores, acadêmicos e programadores que desejam a simplicidade do Markdown combinada com o poder e a elegância de um processador de texto visual moderno.
 
