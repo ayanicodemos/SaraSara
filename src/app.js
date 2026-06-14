@@ -891,17 +891,72 @@ function setupEventListeners() {
 
   // Link format button
   const btnFormatLink = document.getElementById('btnFormatLink');
+  const linkModalOverlay = document.getElementById('linkModalOverlay');
+  const linkModalInput = document.getElementById('linkModalInput');
+  const btnLinkModalCancel = document.getElementById('btnLinkModalCancel');
+  const btnLinkModalConfirm = document.getElementById('btnLinkModalConfirm');
+  let savedLinkRange = null;
+
   btnFormatLink.addEventListener('mousedown', (e) => e.preventDefault());
   btnFormatLink.addEventListener('click', () => {
     const selection = window.getSelection();
-    if (selection.isCollapsed) {
+    if (selection.isCollapsed || selection.rangeCount === 0) {
       alert(getTranslation('alert.selectLinkText', 'Selecione um texto antes de inserir um link.'));
       return;
     }
-    const url = prompt(getTranslation('alert.insertLinkUrl', 'Inserir Link URL:'), 'https://');
-    if (url) {
+    
+    // Save the text selection range before webview modal focuses
+    savedLinkRange = selection.getRangeAt(0);
+
+    // Style modal matching the theme
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    if (currentTheme === 'dark') {
+      linkModalOverlay.classList.add('dark-mode');
+    } else {
+      linkModalOverlay.classList.remove('dark-mode');
+    }
+
+    // Reset input value and reveal modal
+    linkModalInput.value = 'https://';
+    linkModalOverlay.classList.remove('d-none');
+    setTimeout(() => {
+      linkModalInput.focus();
+      linkModalInput.select();
+    }, 50);
+  });
+
+  const closeLinkModal = () => {
+    linkModalOverlay.classList.add('d-none');
+    savedLinkRange = null;
+  };
+
+  btnLinkModalCancel.addEventListener('click', () => {
+    closeLinkModal();
+  });
+
+  const confirmLinkModal = () => {
+    const url = linkModalInput.value.trim();
+    if (url && savedLinkRange) {
+      // Restore the text selection range
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(savedLinkRange);
+
       document.execCommand('createLink', false, url);
       updateFormattingPanelStates();
+    }
+    closeLinkModal();
+  };
+
+  btnLinkModalConfirm.addEventListener('click', () => {
+    confirmLinkModal();
+  });
+
+  linkModalInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      confirmLinkModal();
+    } else if (e.key === 'Escape') {
+      closeLinkModal();
     }
   });
 

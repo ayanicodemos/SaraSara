@@ -116,5 +116,9 @@
   "setup.darkMode": "다크",
   "setup.letsStart": "시작하기",
   "setup.next": "다음",
-  "setup.back": "이전"
+  "setup.back": "이전",
+  "linkModal.title": "링크 삽입",
+  "linkModal.instruction": "선택한 텍스트의 URL을 입력하십시오:",
+  "linkModal.cancel": "취소",
+  "linkModal.insert": "삽입"
 }

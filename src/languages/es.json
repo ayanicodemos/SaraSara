@@ -116,5 +116,9 @@
   "setup.darkMode": "Oscuro",
   "setup.letsStart": "Comencemos",
   "setup.next": "Siguiente",
-  "setup.back": "Atrás"
+  "setup.back": "Atrás",
+  "linkModal.title": "Insertar Enlace",
+  "linkModal.instruction": "Ingrese la URL para el texto seleccionado:",
+  "linkModal.cancel": "Cancelar",
+  "linkModal.insert": "Insertar"
 }

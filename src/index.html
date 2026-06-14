@@ -441,6 +441,19 @@ the Free Software Foundation, either version 3 of the License.
     </div>
   </div>
 
+  <!-- LINK INPUT MODAL -->
+  <div id="linkModalOverlay" class="setup-wizard-overlay d-none">
+    <div class="setup-wizard-card text-center" style="max-width: 400px; height: auto; padding: 30px;">
+      <h4 class="mb-3 fw-semibold" data-i18n="linkModal.title">Inserir Link</h4>
+      <p class="text-muted fs-7 mb-3" data-i18n="linkModal.instruction">Insira a URL para o texto selecionado:</p>
+      <input type="text" id="linkModalInput" class="form-control form-control-sm mb-4 text-center" placeholder="https://" value="https://">
+      <div class="d-flex justify-content-end gap-2">
+        <button id="btnLinkModalCancel" class="btn btn-sm btn-outline-secondary px-3" data-i18n="linkModal.cancel">Cancelar</button>
+        <button id="btnLinkModalConfirm" class="btn btn-sm btn-warning px-3" data-i18n="linkModal.insert">Inserir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- BOOTSTRAP BUNDLE JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

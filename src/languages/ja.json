@@ -116,5 +116,9 @@
   "setup.darkMode": "ダーク",
   "setup.letsStart": "始めましょう",
   "setup.next": "次へ",
-  "setup.back": "戻る"
+  "setup.back": "戻る",
+  "linkModal.title": "リンクの挿入",
+  "linkModal.instruction": "選択したテキストのURLを入力してください:",
+  "linkModal.cancel": "キャンセル",
+  "linkModal.insert": "挿入"
 }

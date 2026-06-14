@@ -116,5 +116,9 @@
   "setup.darkMode": "Темная",
   "setup.letsStart": "Начать",
   "setup.next": "Далее",
-  "setup.back": "Назад"
+  "setup.back": "Назад",
+  "linkModal.title": "Вставить ссылку",
+  "linkModal.instruction": "Введите URL-адрес для выбранного текста:",
+  "linkModal.cancel": "Отмена",
+  "linkModal.insert": "Вставить"
 }

@@ -116,5 +116,9 @@
   "setup.darkMode": "深色",
   "setup.letsStart": "开始",
   "setup.next": "下一步",
-  "setup.back": "上一步"
+  "setup.back": "上一步",
+  "linkModal.title": "插入链接",
+  "linkModal.instruction": "输入所选文本的 URL:",
+  "linkModal.cancel": "取消",
+  "linkModal.insert": "插入"
 }
