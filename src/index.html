@@ -32,7 +32,7 @@ the Free Software Foundation, either version 3 of the License.
       <div class="toolbar-left d-flex align-items-center">
         <img src="icon.svg" class="app-icon-logo me-2" alt="SaraSara Logo" style="height: 24px; width: 24px; object-fit: contain;">
         <div class="document-title-wrapper d-flex align-items-center">
-          <input type="text" id="documentTitleInput" class="form-control form-control-sm border-0 bg-transparent text-white fw-semibold" value="documento.md" title="Clique para renomear" placeholder="Sem título.md">
+          <input type="text" id="documentTitleInput" class="form-control form-control-sm border-0 bg-transparent text-white fw-semibold" value="documento.md" data-i18n-title="document.tooltipRename" title="Clique para renomear" data-i18n-placeholder="document.untitled" placeholder="Sem título.md">
           <span class="material-symbols-outlined edit-icon text-muted ms-1 fs-6">edit</span>
         </div>
       </div>
@@ -40,69 +40,87 @@ the Free Software Foundation, either version 3 of the License.
       <!-- Center controls: Core Document Actions & Insert Blocks -->
       <div class="toolbar-center d-flex align-items-center gap-1">
         <!-- Document Operations -->
-        <button id="btnNew" class="btn btn-toolbar" title="Novo Documento (Limpar)">
+        <button id="btnNew" class="btn btn-toolbar" data-i18n-title="tooltip.new" title="Novo Documento (Limpar)">
           <span class="material-symbols-outlined">note_add</span>
-          <span>Novo</span>
+          <span data-i18n="toolbar.new">Novo</span>
         </button>
-        <button id="btnOpen" class="btn btn-toolbar" title="Abrir Arquivo Markdown">
+        <button id="btnOpen" class="btn btn-toolbar" data-i18n-title="tooltip.open" title="Abrir Arquivo Markdown">
           <span class="material-symbols-outlined">folder_open</span>
-          <span>Abrir</span>
+          <span data-i18n="toolbar.open">Abrir</span>
         </button>
         <input type="file" id="fileImporter" accept=".md,.markdown,.txt" style="display: none;">
         
-        <button id="btnSave" class="btn btn-toolbar btn-primary-accent" title="Salvar Alterações (Cmd+S)">
+        <button id="btnSave" class="btn btn-toolbar btn-primary-accent" data-i18n-title="tooltip.save" title="Salvar Alterações (Cmd+S)">
           <span class="material-symbols-outlined">save</span>
-          <span>Salvar</span>
+          <span data-i18n="toolbar.save">Salvar</span>
         </button>
-        <button id="btnSaveAs" class="btn btn-toolbar" title="Salvar Como outro arquivo (Cmd+Shift+S)">
+        <button id="btnSaveAs" class="btn btn-toolbar" data-i18n-title="tooltip.saveAs" title="Salvar Como outro arquivo (Cmd+Shift+S)">
           <span class="material-symbols-outlined">save_as</span>
-          <span>Salvar Como</span>
+          <span data-i18n="toolbar.saveAs">Salvar Como</span>
         </button>
         
         <div class="toolbar-divider mx-2"></div>
         
         <!-- Insert Blocks -->
-        <button id="btnInsertTable" class="btn btn-toolbar" title="Inserir Tabela">
+        <button id="btnInsertTable" class="btn btn-toolbar" data-i18n-title="tooltip.table" title="Inserir Tabela">
           <span class="material-symbols-outlined">table</span>
-          <span>Tabela</span>
+          <span data-i18n="toolbar.table">Tabela</span>
         </button>
-        <button id="btnInsertCode" class="btn btn-toolbar" title="Inserir Bloco de Código">
+        <button id="btnInsertCode" class="btn btn-toolbar" data-i18n-title="tooltip.code" title="Inserir Bloco de Código">
           <span class="material-symbols-outlined">code_blocks</span>
-          <span>Código</span>
+          <span data-i18n="toolbar.code">Código</span>
         </button>
-        <button id="btnInsertImage" class="btn btn-toolbar" title="Inserir Imagem">
+        <button id="btnInsertImage" class="btn btn-toolbar" data-i18n-title="tooltip.media" title="Inserir Imagem">
           <span class="material-symbols-outlined">image</span>
-          <span>Mídia</span>
+          <span data-i18n="toolbar.media">Mídia</span>
         </button>
-        <button id="btnInsertQuote" class="btn btn-toolbar" title="Inserir Citação">
+        <button id="btnInsertQuote" class="btn btn-toolbar" data-i18n-title="tooltip.quote" title="Inserir Citação">
           <span class="material-symbols-outlined">format_quote</span>
-          <span>Citação</span>
+          <span data-i18n="toolbar.quote">Citação</span>
         </button>
-        <button id="btnInsertDivider" class="btn btn-toolbar" title="Inserir Linha Divisória">
+        <button id="btnInsertDivider" class="btn btn-toolbar" data-i18n-title="tooltip.divider" title="Inserir Linha Divisória">
           <span class="material-symbols-outlined">horizontal_rule</span>
-          <span>Divisor</span>
+          <span data-i18n="toolbar.divider">Divisor</span>
         </button>
       </div>
 
       <!-- Right controls: View modes & Styling panel toggles -->
       <div class="toolbar-right d-flex align-items-center gap-2">
-        <button id="btnUndo" class="btn btn-toolbar-icon" title="Desfazer">
+        <button id="btnUndo" class="btn btn-toolbar-icon" data-i18n-title="tooltip.undo" title="Desfazer">
           <span class="material-symbols-outlined">undo</span>
         </button>
-        <button id="btnRedo" class="btn btn-toolbar-icon" title="Refazer">
+        <button id="btnRedo" class="btn btn-toolbar-icon" data-i18n-title="tooltip.redo" title="Refazer">
           <span class="material-symbols-outlined">redo</span>
         </button>
         <div class="toolbar-divider mx-1"></div>
-        <button id="btnToggleOutline" class="btn btn-toolbar-icon" title="Sumário do Documento">
+        <button id="btnToggleOutline" class="btn btn-toolbar-icon" data-i18n-title="tooltip.outline" title="Sumário do Documento">
           <span class="material-symbols-outlined">toc</span>
         </button>
-        <button id="btnFocusMode" class="btn btn-toolbar-icon" title="Modo Foco (Distração Zero)">
+        <button id="btnFocusMode" class="btn btn-toolbar-icon" data-i18n-title="tooltip.focus" title="Modo Foco (Distração Zero)">
           <span class="material-symbols-outlined">fullscreen</span>
         </button>
-        <button id="btnThemeToggle" class="btn btn-toolbar-icon" title="Alternar Modo Claro/Escuro">
+        <button id="btnThemeToggle" class="btn btn-toolbar-icon" data-i18n-title="tooltip.theme" title="Alternar Modo Claro/Escuro">
           <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
         </button>
-        <button id="btnToggleSidebar" class="btn btn-toolbar-icon active" title="Exibir/Ocultar Formatação">
+        <!-- Disguised Language Select Dropdown -->
+        <div class="dropdown d-inline-block">
+          <button id="btnLanguageSelector" class="btn btn-toolbar-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-i18n-title="tooltip.language" title="Mudar Idioma">
+            <span class="material-symbols-outlined">language</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="btnLanguageSelector">
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('de'); return false;">Deutsch (de)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('en'); return false;">English (en)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('es'); return false;">Español (es)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('fr'); return false;">Français (fr)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('it'); return false;">Italiano (it)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('pt-BR'); return false;">Português (pt-BR)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ja'); return false;">日本語 (ja)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ko'); return false;">한국어 (ko)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('ru'); return false;">Русский (ru)</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('zh-CN'); return false;">简体中文 (zh-CN)</a></li>
+          </ul>
+        </div>
+        <button id="btnToggleSidebar" class="btn btn-toolbar-icon active" data-i18n-title="tooltip.sidebar" title="Exibir/Ocultar Formatação">
           <span class="material-symbols-outlined">dock_to_right</span>
         </button>
       </div>
@@ -114,13 +132,13 @@ the Free Software Foundation, either version 3 of the License.
       <!-- LEFT SIDEBAR: OUTLINE / TABLE OF CONTENTS -->
       <aside class="sidebar-outline collapsed" id="sidebarOutline">
         <div class="sidebar-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-          <span class="fw-semibold text-uppercase tracking-wider">Sumário</span>
+          <span class="fw-semibold text-uppercase tracking-wider" data-i18n="outline.title">Sumário</span>
           <button class="btn btn-close-sidebar text-muted" id="btnCloseOutline">
             <span class="material-symbols-outlined fs-5">close</span>
           </button>
         </div>
         <div class="sidebar-body px-3 py-3" id="outlineContainer">
-          <p class="text-muted small">Crie cabeçalhos (H1, H2, H3) para visualizar a estrutura do documento aqui.</p>
+          <p class="text-muted small" data-i18n="outline.empty">Crie cabeçalhos (H1, H2, H3) para visualizar a estrutura do documento aqui.</p>
         </div>
       </aside>
 
@@ -131,20 +149,20 @@ the Free Software Foundation, either version 3 of the License.
           <div class="tabs-scroll-area" id="tabsScrollArea">
             <!-- Tabs will be dynamically created here -->
           </div>
-          <button id="btnNewTab" class="btn btn-tab-add" title="Nova Aba (Cmd+T)">
+          <button id="btnNewTab" class="btn btn-tab-add" data-i18n-title="tooltip.newTab" title="Nova Aba (Cmd+T)">
             <span class="material-symbols-outlined fs-5">add</span>
           </button>
         </div>
-
+ 
         <main class="editor-canvas-container" id="editorCanvasContainer">
           <!-- Floating Focus-mode Close Button -->
-          <button id="btnExitFocus" class="btn btn-exit-focus d-none" title="Sair do Modo Foco">
+          <button id="btnExitFocus" class="btn btn-exit-focus d-none" data-i18n-title="tooltip.exitFocus" title="Sair do Modo Foco">
             <span class="material-symbols-outlined me-1">fullscreen_exit</span>
-            <span>Sair do Foco</span>
+            <span data-i18n="tooltip.exitFocus">Sair do Foco</span>
           </button>
-
+ 
           <!-- Toast Notification -->
-          <div class="app-toast shadow" id="appToast">Salvo com sucesso!</div>
+          <div class="app-toast shadow" id="appToast" data-i18n="toast.saved">Salvo com sucesso!</div>
 
           <div class="document-page-wrapper">
             <!-- Seamless Writing Sheet -->
@@ -156,72 +174,69 @@ the Free Software Foundation, either version 3 of the License.
       <!-- RIGHT SIDEBAR: PAGES-STYLE FORMAT PANEL -->
       <aside class="sidebar-format" id="sidebarFormat">
         <div class="sidebar-header px-3 py-3 border-bottom d-flex align-items-center justify-content-between">
-          <span class="sidebar-title">Formatar</span>
-          <span class="badge bg-secondary-dark text-muted-accent px-2 py-1 fs-7">Texto</span>
+          <span class="sidebar-title" data-i18n="sidebar.format">Formatar</span>
+          <span class="badge bg-secondary-dark text-muted-accent px-2 py-1 fs-7" data-i18n="sidebar.text">Texto</span>
         </div>
         
         <div class="sidebar-body p-3">
           
           <!-- TEXT STYLE SECTION -->
           <div class="format-section mb-4">
-            <label class="section-label mb-2">Estilo de Parágrafo</label>
+            <label class="section-label mb-2" data-i18n="sidebar.paragraphStyle">Estilo de Parágrafo</label>
             <div class="dropdown">
               <button class="btn btn-format-select w-100 d-flex justify-content-between align-items-center" type="button" id="paragraphStyleDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <span id="currentStyleLabel">Corpo (Parágrafo)</span>
+                <span id="currentStyleLabel" data-i18n="sidebar.paragraphBody">Corpo (Parágrafo)</span>
                 <span class="material-symbols-outlined fs-6">expand_more</span>
               </button>
               <ul class="dropdown-menu w-100" aria-labelledby="paragraphStyleDropdown">
-                <li><a class="dropdown-item py-2" href="#" data-style="paragraph">Corpo (Parágrafo)</a></li>
+                <li><a class="dropdown-item py-2" href="#" data-style="paragraph" data-i18n="sidebar.paragraphBody">Corpo (Parágrafo)</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item py-2 fw-bold fs-5" href="#" data-style="h1">Título 1</a></li>
-                <li><a class="dropdown-item py-2 fw-semibold fs-6" href="#" data-style="h2">Título 2</a></li>
-                <li><a class="dropdown-item py-2 fs-6 text-muted-accent" href="#" data-style="h3">Título 3</a></li>
+                <li><a class="dropdown-item py-2 fw-bold fs-5" href="#" data-style="h1" data-i18n="sidebar.paragraphH1">Título 1</a></li>
+                <li><a class="dropdown-item py-2 fw-semibold fs-6" href="#" data-style="h2" data-i18n="sidebar.paragraphH2">Título 2</a></li>
+                <li><a class="dropdown-item py-2 fs-6 text-muted-accent" href="#" data-style="h3" data-i18n="sidebar.paragraphH3">Título 3</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item py-2 fst-italic" href="#" data-style="quote">Citação</a></li>
+                <li><a class="dropdown-item py-2 fst-italic" href="#" data-style="quote" data-i18n="sidebar.paragraphQuote">Citação</a></li>
               </ul>
-            </div>
-          </div>
-
-          <!-- CHARACTER STYLES -->
+              <!-- CHARACTER STYLES -->
           <div class="format-section mb-4">
-            <label class="section-label mb-2">Estilo do Caractere</label>
+            <label class="section-label mb-2" data-i18n="sidebar.characterStyle">Estilo do Caractere</label>
             <div class="btn-group-row d-flex gap-1 mb-2">
-              <button id="btnFormatBold" class="btn btn-format-control flex-fill" title="Negrito">
+              <button id="btnFormatBold" class="btn btn-format-control flex-fill" data-i18n-title="tooltip.bold" title="Negrito">
                 <span class="material-symbols-outlined">format_bold</span>
               </button>
-              <button id="btnFormatItalic" class="btn btn-format-control flex-fill" title="Itálico">
+              <button id="btnFormatItalic" class="btn btn-format-control flex-fill" data-i18n-title="tooltip.italic" title="Itálico">
                 <span class="material-symbols-outlined">format_italic</span>
               </button>
-              <button id="btnFormatStrike" class="btn btn-format-control flex-fill" title="Tachado">
+              <button id="btnFormatStrike" class="btn btn-format-control flex-fill" data-i18n-title="tooltip.strike" title="Tachado">
                 <span class="material-symbols-outlined">strikethrough_s</span>
               </button>
-              <button id="btnFormatInlineCode" class="btn btn-format-control flex-fill" title="Código em Linha">
+              <button id="btnFormatInlineCode" class="btn btn-format-control flex-fill" data-i18n-title="tooltip.inlineCode" title="Código em Linha">
                 <span class="material-symbols-outlined">code</span>
               </button>
             </div>
             
             <div class="btn-group-row d-flex gap-1">
-              <button id="btnFormatLink" class="btn btn-format-control w-100 d-flex align-items-center justify-content-center gap-1" title="Adicionar Link">
+              <button id="btnFormatLink" class="btn btn-format-control w-100 d-flex align-items-center justify-content-center gap-1" data-i18n-title="tooltip.link" title="Adicionar Link">
                 <span class="material-symbols-outlined fs-5">link</span>
-                <span class="fs-7">Inserir Link</span>
+                <span class="fs-7" data-i18n="sidebar.insertLink">Inserir Link</span>
               </button>
             </div>
           </div>
 
           <!-- ALIGNMENT -->
           <div class="format-section mb-4">
-            <label class="section-label mb-2">Alinhamento</label>
+            <label class="section-label mb-2" data-i18n="sidebar.alignment">Alinhamento</label>
             <div class="btn-group w-100" role="group">
-              <button id="btnAlignLeft" class="btn btn-format-control active" title="Esquerda">
+              <button id="btnAlignLeft" class="btn btn-format-control active" data-i18n-title="tooltip.alignLeft" title="Esquerda">
                 <span class="material-symbols-outlined">format_align_left</span>
               </button>
-              <button id="btnAlignCenter" class="btn btn-format-control" title="Centralizado">
+              <button id="btnAlignCenter" class="btn btn-format-control" data-i18n-title="tooltip.alignCenter" title="Centralizado">
                 <span class="material-symbols-outlined">format_align_center</span>
               </button>
-              <button id="btnAlignRight" class="btn btn-format-control" title="Direita">
+              <button id="btnAlignRight" class="btn btn-format-control" data-i18n-title="tooltip.alignRight" title="Direita">
                 <span class="material-symbols-outlined">format_align_right</span>
               </button>
-              <button id="btnAlignJustify" class="btn btn-format-control" title="Justificado">
+              <button id="btnAlignJustify" class="btn btn-format-control" data-i18n-title="tooltip.alignJustify" title="Justificado">
                 <span class="material-symbols-outlined">format_align_justify</span>
               </button>
             </div>
@@ -229,15 +244,15 @@ the Free Software Foundation, either version 3 of the License.
 
           <!-- LISTS -->
           <div class="format-section mb-4">
-            <label class="section-label mb-2">Marcadores e Listas</label>
+            <label class="section-label mb-2" data-i18n="sidebar.lists">Marcadores e Listas</label>
             <div class="btn-group w-100" role="group">
-              <button id="btnListNone" class="btn btn-format-control active" title="Sem Lista">
-                <span class="fs-7">Nenhum</span>
+              <button id="btnListNone" class="btn btn-format-control active" data-i18n-title="tooltip.listNone" title="Sem Lista">
+                <span class="fs-7" data-i18n="sidebar.listNone">Nenhum</span>
               </button>
-              <button id="btnListBullet" class="btn btn-format-control" title="Lista com Marcadores">
+              <button id="btnListBullet" class="btn btn-format-control" data-i18n-title="tooltip.listBullet" title="Lista com Marcadores">
                 <span class="material-symbols-outlined">format_list_bulleted</span>
               </button>
-              <button id="btnListOrdered" class="btn btn-format-control" title="Lista Numerada">
+              <button id="btnListOrdered" class="btn btn-format-control" data-i18n-title="tooltip.listOrdered" title="Lista Numerada">
                 <span class="material-symbols-outlined">format_list_numbered</span>
               </button>
             </div>
@@ -246,14 +261,14 @@ the Free Software Foundation, either version 3 of the License.
           <!-- CONTEXTUAL ELEMENT EDITORS -->
           <div id="contextualEditor" class="border-top pt-3 mt-3 d-none">
             <!-- Dynamic context-specific options go here (rendered on focus) -->
-            <label class="section-label mb-2 text-warning" id="contextTitle">Opções de Mídia</label>
+            <label class="section-label mb-2 text-warning" id="contextTitle" data-i18n="context.imageTitle">Opções da Imagem</label>
             
             <!-- Code block options -->
             <div id="contextCodeOptions" class="d-none">
               <div class="mb-3">
-                <label class="fs-7 text-muted-accent d-block mb-1">Linguagem</label>
+                <label class="fs-7 text-muted-accent d-block mb-1" data-i18n="context.codeLanguage">Linguagem</label>
                 <select class="form-select form-select-sm sidebar-select" id="codeLangSelect">
-                  <option value="plaintext">Texto Plano</option>
+                  <option value="plaintext" data-i18n="context.codePlaintext">Texto Plano</option>
                   <option value="javascript">JavaScript</option>
                   <option value="typescript">TypeScript</option>
                   <option value="html">HTML</option>
@@ -276,72 +291,70 @@ the Free Software Foundation, either version 3 of the License.
                 </select>
               </div>
             </div>
-
+ 
             <!-- Image options -->
             <div id="contextImageOptions" class="d-none">
               <div class="mb-3">
-                <label class="fs-7 text-muted-accent d-block mb-1">Caminho da Imagem (URL ou Base64)</label>
+                <label class="fs-7 text-muted-accent d-block mb-1" data-i18n="context.imagePath">Caminho da Imagem (URL ou Base64)</label>
                 <div class="input-group input-group-sm">
                   <input type="text" class="form-control sidebar-input" id="imageSrcInput" placeholder="https://exemplo.com/imagem.png">
-                  <button class="btn btn-outline-secondary btn-sm" id="btnUploadImageLocal" title="Fazer upload de imagem do computador">
+                  <button class="btn btn-outline-secondary btn-sm" id="btnUploadImageLocal" data-i18n-title="tooltip.uploadImage" title="Fazer upload de imagem do computador">
                     <span class="material-symbols-outlined fs-5">upload</span>
                   </button>
                 </div>
                 <input type="file" id="localImageFileInput" accept="image/*" style="display: none;">
               </div>
               <div class="mb-3">
-                <label class="fs-7 text-muted-accent d-block mb-1">Legenda (Caption)</label>
+                <label class="fs-7 text-muted-accent d-block mb-1" data-i18n="context.imageCaption">Legenda (Caption)</label>
                 <input type="text" class="form-control form-control-sm sidebar-input" id="imageCaptionInput" placeholder="Ex: Legenda explicativa">
               </div>
               <div class="mb-3">
-                <label class="fs-7 text-muted-accent d-block mb-1">Texto Alternativo (Alt)</label>
+                <label class="fs-7 text-muted-accent d-block mb-1" data-i18n="context.imageAlt">Texto Alternativo (Alt)</label>
                 <input type="text" class="form-control form-control-sm sidebar-input" id="imageAltInput" placeholder="Ex: Descrição da imagem para acessibilidade">
               </div>
             </div>
-
+ 
             <!-- Table options -->
             <div id="contextTableOptions" class="d-none">
               <div class="d-flex flex-wrap gap-1">
                 <button id="btnTableAddRow" class="btn btn-outline-secondary btn-sm flex-fill d-flex align-items-center justify-content-center gap-1">
                   <span class="material-symbols-outlined fs-5">playlist_add</span>
-                  <span>Linha</span>
+                  <span data-i18n="context.tableAddRow">Linha</span>
                 </button>
                 <button id="btnTableAddCol" class="btn btn-outline-secondary btn-sm flex-fill d-flex align-items-center justify-content-center gap-1">
                   <span class="material-symbols-outlined fs-5">view_column</span>
-                  <span>Coluna</span>
+                  <span data-i18n="context.tableAddCol">Coluna</span>
                 </button>
                 <button id="btnTableDelRow" class="btn btn-outline-danger btn-sm flex-fill d-flex align-items-center justify-content-center gap-1">
                   <span class="material-symbols-outlined fs-5">delete</span>
-                  <span>Remover L</span>
+                  <span data-i18n="context.tableDelRow">Remover L</span>
                 </button>
                 <button id="btnTableDelCol" class="btn btn-outline-danger btn-sm flex-fill d-flex align-items-center justify-content-center gap-1">
                   <span class="material-symbols-outlined fs-5">delete</span>
-                  <span>Remover C</span>
+                  <span data-i18n="context.tableDelCol">Remover C</span>
                 </button>
               </div>
             </div>
           </div>
-
+ 
           <!-- DOCUMENT STATS -->
           <div class="stats-section border-top pt-3 mt-4">
-            <label class="section-label mb-2">Estatísticas</label>
+            <label class="section-label mb-2" data-i18n="sidebar.stats">Estatísticas</label>
             <div class="d-flex justify-content-between mb-1">
-              <span class="text-muted-accent small">Palavras:</span>
+              <span class="text-muted-accent small" data-i18n="sidebar.words">Palavras:</span>
               <span class="fw-semibold text-white small" id="statWords">0</span>
             </div>
             <div class="d-flex justify-content-between mb-1">
-              <span class="text-muted-accent small">Caracteres:</span>
+              <span class="text-muted-accent small" data-i18n="sidebar.chars">Caracteres:</span>
               <span class="fw-semibold text-white small" id="statChars">0</span>
             </div>
             <div class="d-flex justify-content-between">
-              <span class="text-muted-accent small">Tempo de Leitura:</span>
+              <span class="text-muted-accent small" data-i18n="sidebar.readTime">Tempo de Leitura:</span>
               <span class="fw-semibold text-white small" id="statReadTime">&lt; 1 min</span>
             </div>
           </div>
-
         </div>
       </aside>
-
     </div>
   </div>
 

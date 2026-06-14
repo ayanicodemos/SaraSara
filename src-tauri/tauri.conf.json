@@ -1,18 +1,18 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SaraSara",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "identifier": "com.sarasara.writer",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "mkdir -p dist && cp src/index.html src/app.js src/styles.css src/icon.svg dist/"
+    "beforeBuildCommand": "mkdir -p dist && cp -r src/languages dist/ && cp src/index.html src/app.js src/styles.css src/icon.svg src/favicon.ico dist/"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "title": "SaraSara",
-        "width": 1024,
+        "width": 1280,
         "height": 768,
         "resizable": true,
         "maximizable": true,

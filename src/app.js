@@ -13,11 +13,15 @@ let documents = [];
 let activeDocId = null;
 let isRendering = false;
 
+// Internationalization (i18n) variables
+let currentLanguage = localStorage.getItem('sarasara_lang') || 'pt-BR';
+let translations = {};
+
 // 1. CUSTOM FRONTEND-ONLY IMAGE TOOL FOR EDITOR.JS
 class SimpleImage {
   static get toolbox() {
     return {
-      title: 'Imagem',
+      title: getTranslation('toolbar.media', 'Imagem'),
       icon: '<span class="material-symbols-outlined fs-5">image</span>'
     };
   }
@@ -47,8 +51,8 @@ class SimpleImage {
     placeholder.classList.add('custom-image-placeholder');
     placeholder.innerHTML = `
       <span class="material-symbols-outlined">image</span>
-      <div class="fw-semibold">Adicionar Imagem</div>
-      <div class="small text-muted mt-1">(Clique para fazer upload local)</div>
+      <div class="fw-semibold">${getTranslation('editor.imageAdd', 'Adicionar Imagem')}</div>
+      <div class="small text-muted mt-1">${getTranslation('editor.imageUploadHint', '(Clique para fazer upload local)')}</div>
     `;
 
     placeholder.addEventListener('click', () => {
@@ -84,7 +88,7 @@ class SimpleImage {
     const caption = document.createElement('div');
     caption.classList.add('custom-image-caption');
     caption.contentEditable = true;
-    caption.setAttribute('placeholder', 'Digite uma legenda...');
+    caption.setAttribute('placeholder', getTranslation('editor.imageCaptionPlaceholder', 'Digite uma legenda...'));
     caption.innerText = this.data.caption || '';
     
     caption.addEventListener('blur', () => {
@@ -105,17 +109,176 @@ class SimpleImage {
   }
 }
 
-// 2. INITIALIZE EDITOR.JS
-document.addEventListener('DOMContentLoaded', () => {
+// 2. INITIALIZE EDITOR.JS & TRANSLATION ENGINE
+
+// Global translation functions
+async function loadLanguage(lang) {
+  if (translations[lang]) return;
+  try {
+    const response = await fetch(`languages/${lang}.json`);
+    if (!response.ok) {
+      throw new Error(`Failed to load translation: ${response.statusText}`);
+    }
+    translations[lang] = await response.json();
+  } catch (err) {
+    console.error("Error loading language file:", err);
+    translations[lang] = translations['pt-BR'] || {};
+  }
+}
+
+function getTranslation(key, defaultValue = "") {
+  const langObj = translations[currentLanguage];
+  if (langObj && langObj[key] !== undefined) {
+    return langObj[key];
+  }
+  const fallbackObj = translations['pt-BR'];
+  if (fallbackObj && fallbackObj[key] !== undefined) {
+    return fallbackObj[key];
+  }
+  return defaultValue || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.innerText = getTranslation(key, el.innerText);
+  });
+  
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    el.setAttribute('title', getTranslation(key, el.getAttribute('title') || ''));
+  });
+  
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    el.setAttribute('placeholder', getTranslation(key, el.getAttribute('placeholder') || ''));
+  });
+
+  // Keep active document title input updated
+  if (activeDocId) {
+    const doc = documents.find(d => d.id === activeDocId);
+    if (doc) {
+      document.getElementById('documentTitleInput').value = doc.title;
+    }
+  }
+}
+
+async function switchLanguage(lang) {
+  currentLanguage = lang;
+  localStorage.setItem('sarasara_lang', lang);
+  
+  await loadLanguage(lang);
+  applyTranslations();
+
+  // Update native macOS menu and About dialog metadata
+  if (window.__TAURI__ && window.__TAURI__.core) {
+    try {
+      await window.__TAURI__.core.invoke('update_native_menu', { lang });
+    } catch (err) {
+      console.error("Failed to update native menu:", err);
+    }
+  }
+  
+  // Rebuild editor to apply new localized placeholder configurations
+  if (editor) {
+    let savedData = { blocks: [] };
+    try {
+      savedData = await editor.save();
+    } catch (err) {
+      console.warn("Could not save editor state before language switch:", err);
+      if (activeDocId) {
+        const doc = documents.find(d => d.id === activeDocId);
+        if (doc) savedData = doc.blocksData;
+      }
+    }
+
+    if (activeDocId) {
+      const doc = documents.find(d => d.id === activeDocId);
+      if (doc) {
+        doc.blocksData = savedData;
+      }
+    }
+
+    isRendering = true;
+    try {
+      await editor.destroy();
+    } catch (e) {
+      console.error("Error destroying editor on switchLanguage:", e);
+    }
+    
+    initEditor(savedData);
+  }
+}
+
+function initEditor(initialData = null) {
   const CodeTool = window.CodeTool;
+  
   editor = new EditorJS({
     holder: 'editorjs',
+    data: initialData ? sanitizeBlocksData(initialData) : undefined,
+    i18n: {
+      messages: {
+        ui: {
+          blockTunes: {
+            toggler: {
+              "Click to tune": getTranslation("editor.clickToTune", "Clique para ajustar"),
+              "or drag to move": getTranslation("editor.dragToMove", "ou arraste para mover")
+            }
+          },
+          inlineToolbar: {
+            converter: {
+              "Convert to": getTranslation("editor.convertTo", "Converter para")
+            }
+          },
+          toolbar: {
+            clickToTune: getTranslation("editor.clickToTune", "Clique para ajustar")
+          }
+        },
+        toolNames: {
+          "Text": getTranslation("editor.toolText", "Texto"),
+          "Heading": getTranslation("editor.toolHeading", "Título"),
+          "List": getTranslation("sidebar.list", "Lista"),
+          "Quote": getTranslation("toolbar.quote", "Citação"),
+          "Code": getTranslation("toolbar.code", "Código"),
+          "Table": getTranslation("toolbar.table", "Tabela"),
+          "Delimiter": getTranslation("toolbar.divider", "Divisor"),
+          "Image": getTranslation("toolbar.media", "Imagem")
+        },
+        tools: {
+          "link": {
+            "Add a link": getTranslation("editor.addLink", "Adicionar um link")
+          },
+          "code": {
+            "Enter a code": getTranslation("editor.codePlaceholder", "Insira seu código...")
+          },
+          "table": {
+            "Add row above": getTranslation("editor.tableAddRowAbove", "Adicionar linha acima"),
+            "Add row below": getTranslation("editor.tableAddRowBelow", "Adicionar linha abaixo"),
+            "Delete row": getTranslation("editor.tableDeleteRow", "Excluir linha"),
+            "Add column to left": getTranslation("editor.tableAddColLeft", "Adicionar coluna à esquerda"),
+            "Add column to right": getTranslation("editor.tableAddColRight", "Adicionar coluna à direita"),
+            "Delete column": getTranslation("editor.tableDeleteCol", "Excluir coluna")
+          }
+        },
+        blockTunes: {
+          "delete": {
+            "Delete": getTranslation("editor.deleteTune", "Excluir")
+          },
+          "moveUp": {
+            "Move up": getTranslation("editor.moveUpTune", "Mover para cima")
+          },
+          "moveDown": {
+            "Move down": getTranslation("editor.moveDownTune", "Mover para baixo")
+          }
+        }
+      }
+    },
     tools: {
       header: {
         class: Header,
-        inlineToolbar: false, // Disabling floating inline toolbar, styling handled via sidebar
+        inlineToolbar: false,
         config: {
-          placeholder: 'Título...',
+          placeholder: getTranslation('editor.headerPlaceholder', 'Título...'),
           levels: [1, 2, 3],
           defaultLevel: 2
         }
@@ -127,15 +290,15 @@ document.addEventListener('DOMContentLoaded', () => {
       code: {
         class: CodeTool,
         config: {
-          placeholder: 'Insira seu código...'
+          placeholder: getTranslation('editor.codePlaceholder', 'Insira seu código...')
         }
       },
       quote: {
         class: Quote,
         inlineToolbar: false,
         config: {
-          quotePlaceholder: 'Citação...',
-          captionPlaceholder: 'Autor...'
+          quotePlaceholder: getTranslation('editor.quotePlaceholder', 'Citação...'),
+          captionPlaceholder: getTranslation('editor.quoteAuthorPlaceholder', 'Autor...')
         }
       },
       table: {
@@ -152,26 +315,28 @@ document.addEventListener('DOMContentLoaded', () => {
         class: Delimiter
       }
     },
-    placeholder: 'Comece a escrever seu documento...',
+    placeholder: getTranslation('editor.placeholder', 'Comece a escrever seu documento...'),
     onReady: async () => {
-      setupEventListeners();
-      const loaded = await loadFromLocalStorage();
-      if (!loaded) {
-        createNewDocument('documento.md');
+      if (!initialData) {
+        setupEventListeners();
+        const loaded = await loadFromLocalStorage();
+        if (!loaded) {
+          createNewDocument(getTranslation('document.defaultName', 'documento.md'));
+        }
+      } else {
+        updateOutline();
+        updateStats();
+        updateActiveBlockStylesInSidebar();
       }
-      updateOutline();
-      updateStats();
-      updateActiveBlockStylesInSidebar();
+      isRendering = false;
     },
     onChange: () => {
       if (isRendering) return;
       markActiveDocumentAsDirty();
       updateOutline();
       
-      // Debounce saving and statistics counting to prevent editor validation conflicts during typing
       if (window.statsTimeout) clearTimeout(window.statsTimeout);
       window.statsTimeout = setTimeout(async () => {
-        // Save current editor content to the active document state first
         if (activeDocId) {
           const activeDoc = documents.find(d => d.id === activeDocId);
           if (activeDoc) {
@@ -187,10 +352,41 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 400);
     }
   });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load pt-BR as base/fallback and the current set language
+  await loadLanguage('pt-BR');
+  if (currentLanguage !== 'pt-BR') {
+    await loadLanguage(currentLanguage);
+  }
+  applyTranslations();
+  initEditor();
+
+  // Update native macOS menu and About dialog metadata on boot
+  if (window.__TAURI__ && window.__TAURI__.core) {
+    try {
+      await window.__TAURI__.core.invoke('update_native_menu', { lang: currentLanguage });
+    } catch (err) {
+      console.error("Failed to update native menu on startup:", err);
+    }
+  }
 });
 
 // 3. LISTENERS & SYNC LOGIC
 function setupEventListeners() {
+  // Intercept Tab key inside Editor.js editable fields to insert indentation instead of triggering Plus block tune button
+  document.getElementById('editorjs').addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.classList.contains('cdx-input') || activeEl.getAttribute('contenteditable') === 'true' || activeEl.tagName === 'TEXTAREA' || activeEl.closest('.ce-block'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.execCommand('insertText', false, '    ');
+      }
+    }
+  }, true); // Use capture phase to intercept before Editor.js handles it
+
   // Theme Toggle
   const themeToggle = document.getElementById('btnThemeToggle');
   const themeIcon = document.getElementById('themeIcon');
@@ -362,16 +558,21 @@ function setupEventListeners() {
 
   // Insert Blocks from top bar
   document.getElementById('btnInsertTable').addEventListener('click', () => {
-    editor.blocks.insert('table', { content: [['Coluna 1', 'Coluna 2'], ['', '']] });
+    const col1 = getTranslation('editor.tableCol1', 'Coluna 1');
+    const col2 = getTranslation('editor.tableCol2', 'Coluna 2');
+    editor.blocks.insert('table', { content: [[col1, col2], ['', '']] });
   });
   document.getElementById('btnInsertCode').addEventListener('click', () => {
-    editor.blocks.insert('code', { code: '// Escreva seu código aqui\n', language: 'javascript' });
+    const comment = getTranslation('editor.codeInitialComment', '// Escreva seu código aqui\n');
+    editor.blocks.insert('code', { code: comment, language: 'javascript' });
   });
   document.getElementById('btnInsertImage').addEventListener('click', () => {
     editor.blocks.insert('image', {});
   });
   document.getElementById('btnInsertQuote').addEventListener('click', () => {
-    editor.blocks.insert('quote', { text: 'Citação...', caption: 'Autor' });
+    const quoteTxt = getTranslation('editor.quoteDefaultText', 'Citação...');
+    const quoteAuthor = getTranslation('editor.quoteDefaultCaption', 'Autor');
+    editor.blocks.insert('quote', { text: quoteTxt, caption: quoteAuthor });
   });
   document.getElementById('btnInsertDivider').addEventListener('click', () => {
     editor.blocks.insert('delimiter', {});
@@ -426,10 +627,10 @@ function setupEventListeners() {
   btnFormatLink.addEventListener('click', () => {
     const selection = window.getSelection();
     if (selection.isCollapsed) {
-      alert('Selecione um texto antes de inserir um link.');
+      alert(getTranslation('alert.selectLinkText', 'Selecione um texto antes de inserir um link.'));
       return;
     }
-    const url = prompt('Inserir Link URL:', 'https://');
+    const url = prompt(getTranslation('alert.insertLinkUrl', 'Inserir Link URL:'), 'https://');
     if (url) {
       document.execCommand('createLink', false, url);
       updateFormattingPanelStates();
@@ -579,16 +780,17 @@ async function updateActiveBlockStylesInSidebar() {
     const blockType = blockApi.name;
 
     // Update paragraph style dropdown label
-    let styleLabel = "Corpo (Parágrafo)";
+    let styleLabel = getTranslation("sidebar.paragraphBody", "Corpo (Parágrafo)");
     if (blockType === 'header') {
       const data = await blockApi.save();
-      styleLabel = `Título ${data.data.level || 2}`;
+      const level = data.data.level || 2;
+      styleLabel = getTranslation(`sidebar.paragraphH${level}`, `Título ${level}`);
     } else if (blockType === 'quote') {
-      styleLabel = "Citação";
+      styleLabel = getTranslation("sidebar.paragraphQuote", "Citação");
     } else if (blockType === 'code') {
-      styleLabel = "Bloco de Código";
+      styleLabel = getTranslation("sidebar.codeBlock", "Bloco de Código");
     } else if (blockType === 'list') {
-      styleLabel = "Lista";
+      styleLabel = getTranslation("sidebar.list", "Lista");
     }
     document.getElementById('currentStyleLabel').innerText = styleLabel;
 
@@ -619,14 +821,14 @@ async function updateActiveBlockStylesInSidebar() {
     if (blockType === 'code') {
       contextSidebar.classList.remove('d-none');
       codeOptions.classList.remove('d-none');
-      document.getElementById('contextTitle').innerText = "Configuração do Código";
+      document.getElementById('contextTitle').innerText = getTranslation("context.codeTitle", "Configuração do Código");
       
       const data = await blockApi.save();
       document.getElementById('codeLangSelect').value = data.data.language || 'javascript';
     } else if (blockType === 'image') {
       contextSidebar.classList.remove('d-none');
       imageOptions.classList.remove('d-none');
-      document.getElementById('contextTitle').innerText = "Opções da Imagem";
+      document.getElementById('contextTitle').innerText = getTranslation("context.imageTitle", "Opções da Imagem");
       
       const data = await blockApi.save();
       document.getElementById('imageSrcInput').value = data.data.url || '';
@@ -635,7 +837,7 @@ async function updateActiveBlockStylesInSidebar() {
     } else if (blockType === 'table') {
       contextSidebar.classList.remove('d-none');
       tableOptions.classList.remove('d-none');
-      document.getElementById('contextTitle').innerText = "Controles da Tabela";
+      document.getElementById('contextTitle').innerText = getTranslation("context.tableTitle", "Controles da Tabela");
     }
   } catch (err) {
     // block API is sometimes not fully ready during rapid clicks
@@ -845,7 +1047,9 @@ async function updateStats() {
 
     document.getElementById('statWords').innerText = wordCount;
     document.getElementById('statChars').innerText = charCount;
-    document.getElementById('statReadTime').innerText = wordCount === 0 ? '< 1 min' : `${readTime} min`;
+    const lessThanMinText = getTranslation('sidebar.readTimeValueLessThanMinute', '< 1 min');
+    const minPattern = getTranslation('sidebar.readTimeValueMinutes', '{time} min');
+    document.getElementById('statReadTime').innerText = wordCount === 0 ? lessThanMinText : minPattern.replace('{time}', readTime);
   } catch (err) {
     console.error('Erro ao atualizar estatísticas:', err);
   }
@@ -869,7 +1073,7 @@ async function exportMarkdown() {
     document.body.removeChild(link);
   } catch (e) {
     console.error('Erro ao exportar Markdown:', e);
-    alert('Houve um erro ao gerar o arquivo Markdown.');
+    alert(getTranslation('alert.errorSave', 'Houve um erro ao gerar o arquivo Markdown.'));
   }
 }
 
@@ -1020,7 +1224,7 @@ async function importMarkdown(markdownText) {
     setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 150);
   } catch (e) {
     console.error('Erro ao renderizar Markdown importado:', e);
-    alert('Houve um erro ao processar o arquivo Markdown.');
+    alert(getTranslation('alert.errorOpen', 'Houve um erro ao processar o arquivo Markdown.'));
   }
 }
 
@@ -1308,7 +1512,10 @@ async function switchDocument(docId) {
   }
 }
 
-function createNewDocument(title = 'Sem título.md', blocksData = { blocks: [] }) {
+function createNewDocument(title = null, blocksData = { blocks: [] }) {
+  if (!title) {
+    title = getTranslation('document.untitled', 'Sem título.md');
+  }
   const newDoc = {
     id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     title: title,
@@ -1327,7 +1534,8 @@ async function closeDocument(docId) {
   if (!doc) return;
 
   if (doc.isDirty) {
-    if (!confirm(`O documento "${doc.title}" tem alterações não salvas. Deseja fechar mesmo assim?`)) {
+    const confirmMsg = getTranslation('alert.unsavedChanges', 'O documento "{title}" tem alterações não salvas. Deseja fechar mesmo assim?').replace('{title}', doc.title);
+    if (!confirm(confirmMsg)) {
       return;
     }
   }
@@ -1336,7 +1544,7 @@ async function closeDocument(docId) {
   documents = documents.filter(d => d.id !== docId);
 
   if (documents.length === 0) {
-    createNewDocument('documento.md');
+    createNewDocument(getTranslation('document.defaultName', 'documento.md'));
   } else if (activeDocId === docId) {
     const nextActiveIndex = Math.min(index, documents.length - 1);
     activeDocId = documents[nextActiveIndex].id;
@@ -1469,7 +1677,7 @@ async function openLocalFile() {
       switchDocument(newDoc.id);
     } catch (err) {
       console.error('Erro ao abrir arquivo físico via Tauri:', err);
-      alert('Não foi possível abrir o arquivo.');
+      alert(getTranslation('alert.errorOpen', 'Não foi possível abrir o arquivo.'));
     }
     return;
   }
@@ -1507,7 +1715,7 @@ async function openLocalFile() {
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Erro ao abrir arquivo físico:', err);
-      alert('Não foi possível abrir o arquivo.');
+      alert(getTranslation('alert.errorOpen', 'Não foi possível abrir o arquivo.'));
     }
   }
 }
@@ -1546,7 +1754,7 @@ async function saveActiveDocument(forceSaveAs = false) {
 
       await window.__TAURI__.fs.writeTextFile(path, markdownText);
       doc.isDirty = false;
-      showNotification('Salvo com sucesso!');
+      showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
       renderTabs();
       saveAllToLocalStorage();
       return;
@@ -1581,13 +1789,13 @@ async function saveActiveDocument(forceSaveAs = false) {
     await writable.close();
 
     doc.isDirty = false;
-    showNotification('Salvo com sucesso!');
+    showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
     renderTabs();
     saveAllToLocalStorage();
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Erro ao salvar arquivo físico:', err);
-      alert('Não foi possível salvar o arquivo.');
+      alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
     }
   }
 }

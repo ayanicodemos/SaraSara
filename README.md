@@ -50,6 +50,45 @@ O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (c
 
 ---
 
+## 🌐 Idiomas Suportados & Customização (i18n)
+
+O **SaraSara** é totalmente internacionalizável e vem com suporte nativo a 10 idiomas:
+* **Deutsch (de)** - Alemão
+* **English (en)** - Inglês
+* **Español (es)** - Espanhol
+* **Français (fr)** - Francês
+* **Italiano (it)** - Italiano
+* **Português (pt-BR)** - Português (Brasil)
+* **日本語 (ja)** - Japonês
+* **한국어 (ko)** - Coreano
+* **Русский (ru)** - Russo
+* **简体中文 (zh-CN)** - Chinês Simplificado
+
+### 🛠️ Como criar ou personalizar o seu próprio idioma
+
+Você pode adicionar novos idiomas ou personalizar as traduções existentes de forma simples:
+
+1. **Crie o arquivo de tradução:**
+   * Navegue até a pasta [src/languages/](src/languages/).
+   * Crie um arquivo JSON com o código do seu idioma (por exemplo, `it.json` ou `es.json`).
+   * Copie a estrutura do arquivo [pt-BR.json](src/languages/pt-BR.json) ou [en.json](src/languages/en.json) e traduza os valores das chaves para o seu idioma.
+
+2. **Adicione o idioma no Menu Dropdown:**
+   * Abra o arquivo [src/index.html](src/index.html).
+   * Localize a tag `<ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="btnLanguageSelector">`.
+   * Adicione um novo item de lista (`<li>`) chamando a função `switchLanguage` com o código do arquivo JSON criado. Por exemplo:
+     ```html
+     <li><a class="dropdown-item py-2" href="#" onclick="switchLanguage('it'); return false;">Italiano (it)</a></li>
+     ```
+   * *Dica:* Ordene a lista colocando os idiomas de alfabeto latino em ordem alfabética primeiro e, depois, os de outros alfabetos no final.
+
+3. **Traduza os Menus Nativos (Opcional - para a versão desktop Tauri):**
+   * Se você estiver usando a versão desktop nativa, também pode traduzir os itens do menu nativo do sistema operacional (como a barra de menus do macOS).
+   * Abra o arquivo [src-tauri/src/lib.rs](src-tauri/src/lib.rs).
+   * Localize a função `create_menu` e adicione o mapeamento para o seu novo código de idioma nos blocos `match lang` para `about_label`, `copyright`, `edit_label` e `window_label`.
+
+---
+
 ## ⌨️ Atalhos de Teclado Suportados
 
 | Atalho | Ação |
