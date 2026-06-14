@@ -50,12 +50,28 @@ class SimpleImage {
     const placeholder = document.createElement('div');
     placeholder.classList.add('custom-image-placeholder');
     placeholder.innerHTML = `
-      <span class="material-symbols-outlined">image</span>
-      <div class="fw-semibold">${getTranslation('editor.imageAdd', 'Adicionar Imagem')}</div>
-      <div class="small text-muted mt-1">${getTranslation('editor.imageUploadHint', '(Clique para fazer upload local)')}</div>
+      <div class="custom-image-placeholder-content w-100 d-flex flex-column align-items-center">
+        <span class="material-symbols-outlined">image</span>
+        <div class="fw-semibold">${getTranslation('editor.imageAdd', 'Adicionar Imagem')}</div>
+        
+        <button class="btn btn-sm btn-outline-secondary mt-2 btn-upload-local px-3" type="button">
+          ${getTranslation('tooltip.uploadImage', 'Upload do Computador')}
+        </button>
+        
+        <div class="d-flex align-items-center gap-2 mt-3 w-100 px-4" style="max-width: 400px;">
+          <input type="text" class="form-control form-control-sm img-url-input text-center" 
+            placeholder="http://... ou caminho da imagem">
+          <button class="btn btn-sm btn-warning btn-apply-url d-flex align-items-center justify-content-center" type="button">
+            <span class="material-symbols-outlined fs-6">check</span>
+          </button>
+        </div>
+      </div>
     `;
 
-    placeholder.addEventListener('click', async () => {
+    // Local upload button listener
+    const btnUpload = placeholder.querySelector('.btn-upload-local');
+    btnUpload.addEventListener('click', async (e) => {
+      e.stopPropagation();
       if (window.__TAURI__) {
         try {
           const filePath = await window.__TAURI__.dialog.open({
@@ -73,19 +89,20 @@ class SimpleImage {
           
           let savedUrl = filePath;
           
-          // If the document already has a file path, copy the image to the media/ folder immediately!
           if (activeDocId) {
             const doc = documents.find(d => d.id === activeDocId);
             if (doc && doc.filePath) {
               const parentDir = getDirectoryPath(doc.filePath);
+              const baseName = getFileBaseName(doc.filePath);
               const docSeparator = doc.filePath.includes('\\') ? '\\' : '/';
-              const mediaDir = parentDir + docSeparator + 'media';
+              const mediaDirName = baseName + '_media';
+              const mediaDir = parentDir + docSeparator + mediaDirName;
               const destPath = mediaDir + docSeparator + fileName;
               
               try {
                 await window.__TAURI__.fs.mkdir(mediaDir, { recursive: true });
                 await window.__TAURI__.fs.copyFile(filePath, destPath);
-                savedUrl = 'media/' + fileName;
+                savedUrl = mediaDirName + '/' + fileName;
               } catch (copyErr) {
                 console.error("Erro ao copiar imagem localmente:", copyErr);
               }
@@ -122,6 +139,34 @@ class SimpleImage {
         }
       };
       fileInput.click();
+    });
+
+    // Apply URL button listener
+    const btnApply = placeholder.querySelector('.btn-apply-url');
+    const urlInput = placeholder.querySelector('.img-url-input');
+    
+    urlInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    urlInput.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        btnApply.click();
+      }
+    });
+
+    btnApply.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const url = urlInput.value.trim();
+      if (url) {
+        this.data.url = url;
+        const separator = url.includes('\\') ? '\\' : '/';
+        const fileName = url.split(separator).pop() || 'imagem';
+        this.data.caption = fileName;
+        this.data.alt = fileName;
+        this._renderImage(url);
+        setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 100);
+      }
     });
 
     this.wrapper.appendChild(placeholder);
@@ -1234,6 +1279,15 @@ function getDirectoryPath(filePath) {
   return parts.join(separator);
 }
 
+// Extract base name without extension
+function getFileBaseName(filePath) {
+  if (!filePath) return '';
+  const separator = filePath.includes('\\') ? '\\' : '/';
+  const nameWithExt = filePath.split(separator).pop();
+  const extIndex = nameWithExt.lastIndexOf('.');
+  return extIndex === -1 ? nameWithExt : nameWithExt.substring(0, extIndex);
+}
+
 // Convert image paths to loadable WKWebView source URLs
 function resolveImageUrl(url) {
   if (!url) return '';
@@ -1242,8 +1296,9 @@ function resolveImageUrl(url) {
   }
   
   if (window.__TAURI__) {
-    // If it's a relative path starting with media/ and we have an active document with a file path
-    if (url.startsWith('media/') || url.startsWith('media\\')) {
+    // If it's a relative path containing _media
+    const isRelativeMedia = /^[a-zA-Z0-9_\-\u00C0-\u00FF]+_media[/\\]/.test(url);
+    if (isRelativeMedia) {
       if (activeDocId) {
         const doc = documents.find(d => d.id === activeDocId);
         if (doc && doc.filePath) {
@@ -1261,13 +1316,15 @@ function resolveImageUrl(url) {
   return url;
 }
 
-// Copy pending absolute image paths to relative media/ folder
+// Copy pending absolute image paths to relative [baseName]_media/ folder
 async function copyPendingImagesToLocalMedia(doc) {
   if (!window.__TAURI__ || !doc || !doc.filePath) return false;
   
   const parentDir = getDirectoryPath(doc.filePath);
+  const baseName = getFileBaseName(doc.filePath);
   const separator = doc.filePath.includes('\\') ? '\\' : '/';
-  const mediaDir = parentDir + separator + 'media';
+  const mediaDirName = baseName + '_media';
+  const mediaDir = parentDir + separator + mediaDirName;
   
   let modified = false;
   
@@ -1276,8 +1333,9 @@ async function copyPendingImagesToLocalMedia(doc) {
       if (block.type === 'image' && block.data && block.data.url) {
         const url = block.data.url;
         
-        // If it's an absolute file path (doesn't start with media/, http, data:)
-        if (!url.startsWith('media/') && !url.startsWith('media\\') && !url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('data:')) {
+        // If it's an absolute file path (doesn't start with any_media/, http, data:)
+        const isRelativeMedia = /^[a-zA-Z0-9_\-\u00C0-\u00FF]+_media[/\\]/.test(url);
+        if (!isRelativeMedia && !url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('data:')) {
           const fileSeparator = url.includes('\\') ? '\\' : '/';
           const fileName = url.split(fileSeparator).pop();
           const destPath = mediaDir + separator + fileName;
@@ -1285,7 +1343,7 @@ async function copyPendingImagesToLocalMedia(doc) {
           try {
             await window.__TAURI__.fs.mkdir(mediaDir, { recursive: true });
             await window.__TAURI__.fs.copyFile(url, destPath);
-            block.data.url = 'media/' + fileName;
+            block.data.url = mediaDirName + '/' + fileName;
             modified = true;
           } catch (e) {
             console.error("Erro ao copiar imagem pendente ao salvar:", e);
@@ -1298,6 +1356,38 @@ async function copyPendingImagesToLocalMedia(doc) {
   return modified;
 }
 
+// Remove unused media folder if it exists and has no image blocks referencing it
+async function cleanUpUnusedMediaFolder(doc) {
+  if (!window.__TAURI__ || !doc || !doc.filePath) return;
+  
+  const parentDir = getDirectoryPath(doc.filePath);
+  const baseName = getFileBaseName(doc.filePath);
+  const separator = doc.filePath.includes('\\') ? '\\' : '/';
+  const mediaDirName = baseName + '_media';
+  const mediaDir = parentDir + separator + mediaDirName;
+  
+  let count = 0;
+  if (doc.blocksData && doc.blocksData.blocks) {
+    doc.blocksData.blocks.forEach(block => {
+      if (block.type === 'image' && block.data && block.data.url) {
+        const url = block.data.url;
+        if (url.startsWith(mediaDirName + '/') || url.startsWith(mediaDirName + '\\')) {
+          count++;
+        }
+      }
+    });
+  }
+  
+  if (count === 0) {
+    try {
+      await window.__TAURI__.fs.remove(mediaDir, { recursive: true });
+      console.log(`Pasta media vazia deletada: ${mediaDir}`);
+    } catch (e) {
+      // Directory might not exist or failed to remove, ignore
+    }
+  }
+}
+
 // Auto-save physical file if active and filePath exists
 async function autoSavePhysicalFile(doc) {
   if (!window.__TAURI__ || !doc || !doc.filePath) return;
@@ -1305,6 +1395,10 @@ async function autoSavePhysicalFile(doc) {
     const blocksData = doc.blocksData || await editor.save();
     const markdownText = editorBlocksToMarkdown(blocksData.blocks);
     await window.__TAURI__.fs.writeTextFile(doc.filePath, markdownText);
+    
+    // Run cleanup in background after writing file
+    await cleanUpUnusedMediaFolder(doc);
+    
     if (doc.isDirty) {
       doc.isDirty = false;
       renderTabs();
@@ -2092,6 +2186,10 @@ async function saveActiveDocument(forceSaveAs = false) {
 
       const markdownText = editorBlocksToMarkdown(doc.blocksData.blocks);
       await window.__TAURI__.fs.writeTextFile(path, markdownText);
+      
+      // Clean up empty media folders if no images are left
+      await cleanUpUnusedMediaFolder(doc);
+      
       doc.isDirty = false;
       showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
       renderTabs();

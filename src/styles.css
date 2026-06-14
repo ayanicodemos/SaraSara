@@ -540,6 +540,34 @@ a:hover {
   color: var(--accent-color);
 }
 
+.img-url-input {
+  background-color: var(--bg-app) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+
+.img-url-input:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px rgba(255, 149, 0, 0.2) !important;
+}
+
+.btn-upload-local {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  transition: all 0.2s ease;
+  border-radius: 6px !important;
+}
+
+.btn-upload-local:hover {
+  background-color: var(--accent-bg) !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
 .custom-image-placeholder span {
   font-size: 40px;
   margin-bottom: 8px;
