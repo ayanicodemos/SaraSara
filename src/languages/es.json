@@ -109,5 +109,12 @@
   "editor.tableCol2": "Columna 2",
   "editor.codeInitialComment": "// Escribe tu código aquí\n",
   "editor.quoteDefaultText": "Cita...",
-  "editor.quoteDefaultCaption": "Autor"
+  "editor.quoteDefaultCaption": "Autor",
+  "setup.titleLanguage": "Idioma",
+  "setup.titleTheme": "Elige tu estilo",
+  "setup.lightMode": "Claro",
+  "setup.darkMode": "Oscuro",
+  "setup.letsStart": "Comencemos",
+  "setup.next": "Siguiente",
+  "setup.back": "Atrás"
 }

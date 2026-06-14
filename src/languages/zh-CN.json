@@ -109,5 +109,12 @@
   "editor.tableCol2": "第二列",
   "editor.codeInitialComment": "// 在此处编写您的代码\n",
   "editor.quoteDefaultText": "引用文本...",
-  "editor.quoteDefaultCaption": "作者"
+  "editor.quoteDefaultCaption": "作者",
+  "setup.titleLanguage": "语言",
+  "setup.titleTheme": "选择外观",
+  "setup.lightMode": "浅色",
+  "setup.darkMode": "深色",
+  "setup.letsStart": "开始",
+  "setup.next": "下一步",
+  "setup.back": "上一步"
 }

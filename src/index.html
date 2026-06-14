@@ -368,6 +368,79 @@ the Free Software Foundation, either version 3 of the License.
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@1.5.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@1.4.2"></script>
 
+  <!-- FIRST-RUN SETUP WIZARD OVERLAY -->
+  <div id="setupWizardOverlay" class="setup-wizard-overlay d-none">
+    <div class="setup-wizard-card">
+      
+      <!-- STEP 1: LANGUAGE SELECTION -->
+      <div id="setupStep1" class="setup-step active">
+        <h2 class="setup-title" data-i18n="setup.titleLanguage">Language</h2>
+        
+        <div class="setup-language-list-container">
+          <ul class="setup-language-list">
+            <li data-lang="de">Deutsch</li>
+            <li data-lang="en">English</li>
+            <li data-lang="es">Español</li>
+            <li data-lang="fr">Français</li>
+            <li data-lang="it">Italiano</li>
+            <li data-lang="pt-BR">Português (Brasil)</li>
+            <li data-lang="ja">日本語</li>
+            <li data-lang="ko">한국어</li>
+            <li data-lang="ru">Русский</li>
+            <li data-lang="zh-CN">简体中文</li>
+          </ul>
+        </div>
+        
+        <div class="setup-footer text-center">
+          <button id="btnSetupNext" class="btn btn-setup-next">
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- STEP 2: THEME SELECTION -->
+      <div id="setupStep2" class="setup-step">
+        <h2 class="setup-title" data-i18n="setup.titleTheme">Choose Your Look</h2>
+        
+        <div class="setup-theme-options">
+          <!-- Light Theme Card -->
+          <div class="theme-card" data-theme="light">
+            <div class="theme-preview light-preview">
+              <div class="preview-header"></div>
+              <div class="preview-body">
+                <div class="preview-line-long"></div>
+                <div class="preview-line-short"></div>
+              </div>
+            </div>
+            <span class="theme-label" data-i18n="setup.lightMode">Light</span>
+          </div>
+          
+          <!-- Dark Theme Card -->
+          <div class="theme-card active" data-theme="dark">
+            <div class="theme-preview dark-preview">
+              <div class="preview-header"></div>
+              <div class="preview-body">
+                <div class="preview-line-long"></div>
+                <div class="preview-line-short"></div>
+              </div>
+            </div>
+            <span class="theme-label" data-i18n="setup.darkMode">Dark</span>
+          </div>
+        </div>
+        
+        <div class="setup-footer d-flex justify-content-between align-items-center">
+          <button id="btnSetupBack" class="btn btn-setup-back" data-i18n="setup.back">
+            Voltar
+          </button>
+          <button id="btnSetupStart" class="btn btn-setup-start" data-i18n="setup.letsStart">
+            Let's Start
+          </button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
   <!-- BOOTSTRAP BUNDLE JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

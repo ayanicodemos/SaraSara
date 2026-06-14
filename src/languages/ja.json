@@ -109,5 +109,12 @@
   "editor.tableCol2": "列 2",
   "editor.codeInitialComment": "// ここにコードを記述します\n",
   "editor.quoteDefaultText": "引用...",
-  "editor.quoteDefaultCaption": "著者"
+  "editor.quoteDefaultCaption": "著者",
+  "setup.titleLanguage": "言語",
+  "setup.titleTheme": "外観を選択",
+  "setup.lightMode": "ライト",
+  "setup.darkMode": "ダーク",
+  "setup.letsStart": "始めましょう",
+  "setup.next": "次へ",
+  "setup.back": "戻る"
 }

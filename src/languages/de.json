@@ -109,5 +109,12 @@
   "editor.tableCol2": "Spalte 2",
   "editor.codeInitialComment": "// Schreiben Sie Ihren Code hier\n",
   "editor.quoteDefaultText": "Zitat...",
-  "editor.quoteDefaultCaption": "Autor"
+  "editor.quoteDefaultCaption": "Autor",
+  "setup.titleLanguage": "Sprache",
+  "setup.titleTheme": "Erscheinungsbild wählen",
+  "setup.lightMode": "Hell",
+  "setup.darkMode": "Dunkel",
+  "setup.letsStart": "Los geht's",
+  "setup.next": "Weiter",
+  "setup.back": "Zurück"
 }

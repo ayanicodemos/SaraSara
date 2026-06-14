@@ -109,5 +109,12 @@
   "editor.tableCol2": "열 2",
   "editor.codeInitialComment": "// 여기에 코드를 작성하세요\n",
   "editor.quoteDefaultText": "인용구...",
-  "editor.quoteDefaultCaption": "저자"
+  "editor.quoteDefaultCaption": "저자",
+  "setup.titleLanguage": "언어",
+  "setup.titleTheme": "테마 선택",
+  "setup.lightMode": "라이트",
+  "setup.darkMode": "다크",
+  "setup.letsStart": "시작하기",
+  "setup.next": "다음",
+  "setup.back": "이전"
 }

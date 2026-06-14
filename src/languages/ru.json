@@ -109,5 +109,12 @@
   "editor.tableCol2": "Столбец 2",
   "editor.codeInitialComment": "// Впишите ваш код сюда\n",
   "editor.quoteDefaultText": "Цитата...",
-  "editor.quoteDefaultCaption": "Автор"
+  "editor.quoteDefaultCaption": "Автор",
+  "setup.titleLanguage": "Язык",
+  "setup.titleTheme": "Выберите оформление",
+  "setup.lightMode": "Светлая",
+  "setup.darkMode": "Темная",
+  "setup.letsStart": "Начать",
+  "setup.next": "Далее",
+  "setup.back": "Назад"
 }

@@ -354,24 +354,176 @@ function initEditor(initialData = null) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Load pt-BR as base/fallback and the current set language
-  await loadLanguage('pt-BR');
-  if (currentLanguage !== 'pt-BR') {
-    await loadLanguage(currentLanguage);
-  }
-  applyTranslations();
-  initEditor();
-
-  // Update native macOS menu and About dialog metadata on boot
-  if (window.__TAURI__ && window.__TAURI__.core) {
-    try {
-      await window.__TAURI__.core.invoke('update_native_menu', { lang: currentLanguage });
-    } catch (err) {
-      console.error("Failed to update native menu on startup:", err);
+function initSetupWizard(detectedLang) {
+  const overlay = document.getElementById('setupWizardOverlay');
+  const step1 = document.getElementById('setupStep1');
+  const step2 = document.getElementById('setupStep2');
+  const btnNext = document.getElementById('btnSetupNext');
+  const btnBack = document.getElementById('btnSetupBack');
+  const btnStart = document.getElementById('btnSetupStart');
+  const langItems = document.querySelectorAll('.setup-language-list li');
+  const themeCards = document.querySelectorAll('.theme-card');
+  
+  let selectedLang = detectedLang;
+  let selectedTheme = 'dark';
+  
+  // Highlight pre-selected language
+  langItems.forEach(item => {
+    if (item.getAttribute('data-lang') === selectedLang) {
+      item.classList.add('selected');
+      setTimeout(() => {
+        item.scrollIntoView({ block: 'nearest' });
+      }, 50);
+    } else {
+      item.classList.remove('selected');
     }
+  });
+
+  // Enable dark mode overlay by default
+  overlay.classList.add('dark-mode');
+
+  // Language list selection
+  langItems.forEach(item => {
+    item.addEventListener('click', async () => {
+      langItems.forEach(li => li.classList.remove('selected'));
+      item.classList.add('selected');
+      selectedLang = item.getAttribute('data-lang');
+      
+      // Update preview translations on the fly
+      currentLanguage = selectedLang;
+      await loadLanguage(selectedLang);
+      applyTranslations();
+    });
+  });
+
+  // Next Step
+  btnNext.addEventListener('click', () => {
+    step1.classList.remove('active');
+    step2.classList.add('active');
+  });
+
+  // Back Step
+  btnBack.addEventListener('click', () => {
+    step2.classList.remove('active');
+    step1.classList.add('active');
+  });
+
+  // Theme selection
+  themeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      themeCards.forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      selectedTheme = card.getAttribute('data-theme');
+      
+      if (selectedTheme === 'dark') {
+        overlay.classList.add('dark-mode');
+      } else {
+        overlay.classList.remove('dark-mode');
+      }
+    });
+  });
+
+  // Finish setup
+  btnStart.addEventListener('click', async () => {
+    localStorage.setItem('sarasara_lang', selectedLang);
+    localStorage.setItem('sarasara_theme', selectedTheme);
+    localStorage.setItem('sarasara_setup_completed', 'true');
+    
+    // Apply selected theme
+    document.documentElement.setAttribute('data-theme', selectedTheme);
+    const themeIcon = document.getElementById('themeIcon');
+    if (themeIcon) {
+      themeIcon.innerText = selectedTheme === 'dark' ? 'light_mode' : 'dark_mode';
+    }
+    
+    // Dynamically apply selected language and initialize main app elements
+    await switchLanguage(selectedLang);
+    
+    // Reconstruct native menu
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('update_native_menu', { lang: selectedLang });
+      } catch (err) {
+        console.error("Failed to update native menu on setup finish:", err);
+      }
+    }
+    
+    // Fade out overlay
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+      overlay.classList.add('d-none');
+    }, 300);
+    
+    // Initialize editor
+    initEditor();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const setupCompleted = localStorage.getItem('sarasara_setup_completed') === 'true';
+  
+  if (setupCompleted) {
+    // Standard startup: apply theme and language, then init editor
+    const savedTheme = localStorage.getItem('sarasara_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const themeIcon = document.getElementById('themeIcon');
+    if (themeIcon) {
+      themeIcon.innerText = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
+    }
+    
+    await loadLanguage('pt-BR');
+    if (currentLanguage !== 'pt-BR') {
+      await loadLanguage(currentLanguage);
+    }
+    applyTranslations();
+    initEditor();
+    
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('update_native_menu', { lang: currentLanguage });
+      } catch (err) {
+        console.error("Failed to update native menu on startup:", err);
+      }
+    }
+  } else {
+    // First-run setup wizard startup
+    document.documentElement.setAttribute('data-theme', 'dark'); // neutral start is dark
+    const themeIcon = document.getElementById('themeIcon');
+    if (themeIcon) {
+      themeIcon.innerText = 'light_mode';
+    }
+    
+    // Detect system/browser language to pre-highlight it in Step 1
+    const browserLang = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    let detectedLang = 'en';
+    if (browserLang.startsWith('pt')) detectedLang = 'pt-BR';
+    else if (browserLang.startsWith('ja')) detectedLang = 'ja';
+    else if (browserLang.startsWith('de')) detectedLang = 'de';
+    else if (browserLang.startsWith('es')) detectedLang = 'es';
+    else if (browserLang.startsWith('fr')) detectedLang = 'fr';
+    else if (browserLang.startsWith('it')) detectedLang = 'it';
+    else if (browserLang.startsWith('ko')) detectedLang = 'ko';
+    else if (browserLang.startsWith('ru')) detectedLang = 'ru';
+    else if (browserLang.startsWith('zh')) detectedLang = 'zh-CN';
+    
+    currentLanguage = detectedLang;
+    
+    // Load detected language translations dynamically for the setup screens
+    await loadLanguage('pt-BR');
+    if (currentLanguage !== 'pt-BR') {
+      await loadLanguage(currentLanguage);
+    }
+    applyTranslations();
+    
+    // Reveal and prepare the setup overlay
+    const overlay = document.getElementById('setupWizardOverlay');
+    if (overlay) {
+      overlay.classList.remove('d-none');
+    }
+    initSetupWizard(detectedLang);
   }
 });
+
 
 // 3. LISTENERS & SYNC LOGIC
 function setupEventListeners() {
@@ -401,6 +553,7 @@ function setupEventListeners() {
       themeIcon.innerText = 'light_mode';
     }
     document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('sarasara_theme', newTheme);
   });
 
   // Focus / Distraction-Free Mode
