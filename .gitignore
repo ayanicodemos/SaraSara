@@ -9,3 +9,6 @@ local_tools/
 # OS-specific files
 .DS_Store
 **/.DS_Store
+
+# macOS compiled binaries
+macOS/
