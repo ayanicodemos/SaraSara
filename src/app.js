@@ -4,7 +4,7 @@
 // the Free Software Foundation, either version 3 of the License.
 
 /**
- * SARASARA - APPLE PAGES STYLED MARKDOWN EDITOR
+ * SARASARA - MARKDOWN EDITOR ESTILO APPLE PAGES
  * Core Application Logic
  */
 

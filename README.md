@@ -1,10 +1,14 @@
 # SaraSara 📄✨
 
-**SaraSara** é um editor de Markdown minimalista e livre de distrações, projetado com a estética limpa e profissional do *Apple Pages*. Seu nome vem da onomatopeia japonesa **"sara-sara" (さらさら)**, que evoca o som suave e contínuo de um lápis deslizando delicadamente sobre o papel.
+**SaraSara** é um editor de Markdown minimalista e livre de distrações, projetado no Estilo Apple Pages. Seu nome vem da onomatopeia japonesa **"sara-sara" (さらさら)**, que evoca o som suave e contínuo de um lápis deslizando delicadamente sobre o papel.
 
 Este aplicativo foi criado para escritores, acadêmicos e programadores que desejam a simplicidade do Markdown combinada com o poder e a elegância de um processador de texto visual moderno.
 
 ![SaraSara Screenshot](SaraSara.png)
+
+### 💾 Baixar Versão Desktop (Instaladores Prontos)
+As versões compiladas prontas para uso no Windows, macOS e Linux (AppImage) podem ser baixadas diretamente na seção de Releases:  
+👉 **[Instaladores Prontos do SaraSara (Releases)](https://github.com/ayanicodemos/SaraSara/releases)**
 
 ### 🌐 Versão Web & Demonstração Online
 O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (com salvamento local via localStorage), dispensando qualquer tipo de instalação. Você pode testar e usar o aplicativo online diretamente em:
@@ -58,7 +62,7 @@ O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (c
 
 ---
 
-* **Desktop Wrapper:** Tauri v2 + Rust para compilação nativa (instaladores disponíveis na seção de Releases).
+* **Desktop Wrapper:** Tauri v2 + Rust para compilação nativa (instaladores compilados prontos em [GitHub Releases](https://github.com/ayanicodemos/SaraSara/releases)).
 
 ---
 
