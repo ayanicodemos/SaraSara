@@ -58,13 +58,30 @@ O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (c
 
 ---
 
-## 🛠️ Detalhes do Projeto e Tecnologias
+* **Desktop Wrapper:** Tauri v2 + Rust para compilação nativa (instaladores disponíveis na seção de Releases).
 
-O **SaraSara** roda inteiramente no cliente e foi construído de forma limpa e leve:
-* **Base:** HTML5 Semântico, Vanilla JavaScript (ES6+) e CSS3 customizado.
-* **Motor do Editor:** Customização do Editor.js para um fluxo sem menus flutuantes invasivos.
-* **Layout:** Grid customizado sob variáveis HSL no Bootstrap 5.
-* **Desktop Wrapper:** Tauri v2 + Rust para compilação nativa (disponível para macOS na pasta `/macOS`).
+---
+
+## 🚀 Como Executar e Compilar Localmente
+
+### 1. Versão Web
+Para rodar a versão web offline localmente, basta abrir o arquivo [src/index.html](src/index.html) diretamente no seu navegador, ou servir a pasta do projeto com um servidor HTTP simples:
+```bash
+python3 -m http.server 8000
+```
+E abrir `http://localhost:8000/src/` no navegador.
+
+### 2. Versão Desktop (Tauri)
+Para rodar ou compilar a versão desktop nativa localmente, você precisará ter o **Node.js** e o **Rust (Cargo)** instalados em sua máquina.
+
+* **Executar em modo desenvolvimento (Live Reload):**
+  ```bash
+  npx @tauri-apps/cli dev
+  ```
+* **Compilar o instalador nativo para o seu sistema operacional:**
+  ```bash
+  npx @tauri-apps/cli build
+  ```
 
 ---
 
