@@ -55,7 +55,56 @@ class SimpleImage {
       <div class="small text-muted mt-1">${getTranslation('editor.imageUploadHint', '(Clique para fazer upload local)')}</div>
     `;
 
-    placeholder.addEventListener('click', () => {
+    placeholder.addEventListener('click', async () => {
+      if (window.__TAURI__) {
+        try {
+          const filePath = await window.__TAURI__.dialog.open({
+            multiple: false,
+            filters: [{
+              name: 'Imagens',
+              extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']
+            }]
+          });
+          
+          if (!filePath) return;
+          
+          const separator = filePath.includes('\\') ? '\\' : '/';
+          const fileName = filePath.split(separator).pop();
+          
+          let savedUrl = filePath;
+          
+          // If the document already has a file path, copy the image to the media/ folder immediately!
+          if (activeDocId) {
+            const doc = documents.find(d => d.id === activeDocId);
+            if (doc && doc.filePath) {
+              const parentDir = getDirectoryPath(doc.filePath);
+              const docSeparator = doc.filePath.includes('\\') ? '\\' : '/';
+              const mediaDir = parentDir + docSeparator + 'media';
+              const destPath = mediaDir + docSeparator + fileName;
+              
+              try {
+                await window.__TAURI__.fs.mkdir(mediaDir, { recursive: true });
+                await window.__TAURI__.fs.copyFile(filePath, destPath);
+                savedUrl = 'media/' + fileName;
+              } catch (copyErr) {
+                console.error("Erro ao copiar imagem localmente:", copyErr);
+              }
+            }
+          }
+          
+          this.data.url = savedUrl;
+          this.data.caption = fileName;
+          this.data.alt = fileName;
+          this._renderImage(savedUrl);
+          
+          setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 100);
+        } catch (err) {
+          console.error("Erro ao selecionar imagem via Tauri:", err);
+        }
+        return;
+      }
+
+      // Web Fallback
       const fileInput = document.getElementById('localImageFileInput');
       fileInput.onchange = (e) => {
         const file = e.target.files[0];
@@ -67,7 +116,6 @@ class SimpleImage {
             this.data.caption = file.name;
             this.data.alt = file.name;
             this._renderImage(base64);
-            // Refresh sidebar formatting input states
             setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 100);
           };
           reader.readAsDataURL(file);
@@ -82,7 +130,7 @@ class SimpleImage {
   _renderImage(url) {
     this.wrapper.innerHTML = '';
     const img = document.createElement('img');
-    img.src = url;
+    img.src = resolveImageUrl(url);
     img.alt = this.data.alt || 'Imagem do documento';
 
     const caption = document.createElement('div');
@@ -337,8 +385,9 @@ function initEditor(initialData = null) {
       
       if (window.statsTimeout) clearTimeout(window.statsTimeout);
       window.statsTimeout = setTimeout(async () => {
+        let activeDoc;
         if (activeDocId) {
-          const activeDoc = documents.find(d => d.id === activeDocId);
+          activeDoc = documents.find(d => d.id === activeDocId);
           if (activeDoc) {
             try {
               activeDoc.blocksData = await editor.save();
@@ -349,7 +398,12 @@ function initEditor(initialData = null) {
         }
         await updateStats();
         saveAllToLocalStorage();
-      }, 400);
+
+        // Auto-save physical file if active and filePath exists
+        if (activeDoc && activeDoc.filePath) {
+          await autoSavePhysicalFile(activeDoc);
+        }
+      }, 800);
     }
   });
 }
@@ -1171,38 +1225,162 @@ function updateOutline() {
 }
 
 // 9. DOCUMENT CHARACTER & WORD STATISTICS
-async function updateStats() {
-  if (!editor || !editor.save) return;
-  try {
-    const data = await editor.save();
-    let textContent = '';
+// Extract parent directory of a path
+function getDirectoryPath(filePath) {
+  if (!filePath) return '';
+  const separator = filePath.includes('\\') ? '\\' : '/';
+  const parts = filePath.split(separator);
+  parts.pop();
+  return parts.join(separator);
+}
 
-    data.blocks.forEach(block => {
-      if (block.data.text) {
-        textContent += block.data.text + ' ';
-      } else if (block.data.items) {
-        textContent += block.data.items.join(' ') + ' ';
-      } else if (block.data.code) {
-        textContent += block.data.code + ' ';
-      } else if (block.data.caption) {
-        textContent += block.data.caption + ' ';
+// Convert image paths to loadable WKWebView source URLs
+function resolveImageUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('http:') || url.startsWith('https:')) {
+    return url;
+  }
+  
+  if (window.__TAURI__) {
+    // If it's a relative path starting with media/ and we have an active document with a file path
+    if (url.startsWith('media/') || url.startsWith('media\\')) {
+      if (activeDocId) {
+        const doc = documents.find(d => d.id === activeDocId);
+        if (doc && doc.filePath) {
+          const parentDir = getDirectoryPath(doc.filePath);
+          const separator = doc.filePath.includes('\\') ? '\\' : '/';
+          const absPath = parentDir + separator + url;
+          return window.__TAURI__.core.convertFileSrc(absPath);
+        }
       }
-    });
+    }
+    // If it is an absolute path
+    return window.__TAURI__.core.convertFileSrc(url);
+  }
+  
+  return url;
+}
 
-    // Strip HTML Tags
-    const cleanText = textContent.replace(/<[^>]*>/g, '').trim();
+// Copy pending absolute image paths to relative media/ folder
+async function copyPendingImagesToLocalMedia(doc) {
+  if (!window.__TAURI__ || !doc || !doc.filePath) return false;
+  
+  const parentDir = getDirectoryPath(doc.filePath);
+  const separator = doc.filePath.includes('\\') ? '\\' : '/';
+  const mediaDir = parentDir + separator + 'media';
+  
+  let modified = false;
+  
+  if (doc.blocksData && doc.blocksData.blocks) {
+    for (let block of doc.blocksData.blocks) {
+      if (block.type === 'image' && block.data && block.data.url) {
+        const url = block.data.url;
+        
+        // If it's an absolute file path (doesn't start with media/, http, data:)
+        if (!url.startsWith('media/') && !url.startsWith('media\\') && !url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('data:')) {
+          const fileSeparator = url.includes('\\') ? '\\' : '/';
+          const fileName = url.split(fileSeparator).pop();
+          const destPath = mediaDir + separator + fileName;
+          
+          try {
+            await window.__TAURI__.fs.mkdir(mediaDir, { recursive: true });
+            await window.__TAURI__.fs.copyFile(url, destPath);
+            block.data.url = 'media/' + fileName;
+            modified = true;
+          } catch (e) {
+            console.error("Erro ao copiar imagem pendente ao salvar:", e);
+          }
+        }
+      }
+    }
+  }
+  
+  return modified;
+}
 
-    const charCount = cleanText.length;
-    const words = cleanText === '' ? [] : cleanText.split(/\s+/);
-    const wordCount = words.length;
+// Auto-save physical file if active and filePath exists
+async function autoSavePhysicalFile(doc) {
+  if (!window.__TAURI__ || !doc || !doc.filePath) return;
+  try {
+    const blocksData = doc.blocksData || await editor.save();
+    const markdownText = editorBlocksToMarkdown(blocksData.blocks);
+    await window.__TAURI__.fs.writeTextFile(doc.filePath, markdownText);
+    if (doc.isDirty) {
+      doc.isDirty = false;
+      renderTabs();
+    }
+  } catch (err) {
+    console.warn("Erro no auto-salvamento físico:", err);
+  }
+}
 
-    const readTime = Math.max(1, Math.ceil(wordCount / 200));
+let statsWorker = null;
 
+function initStatsWorker() {
+  const workerCode = `
+    self.onmessage = function(e) {
+      const blocks = e.data;
+      let textContent = '';
+      
+      function extractTextFromItems(items) {
+        let text = '';
+        if (Array.isArray(items)) {
+          items.forEach(it => {
+            if (typeof it === 'string') {
+              text += it + ' ';
+            } else if (typeof it === 'object') {
+              if (it.content) text += it.content + ' ';
+              if (it.items) text += extractTextFromItems(it.items) + ' ';
+            }
+          });
+        }
+        return text;
+      }
+      
+      blocks.forEach(block => {
+        if (block.data) {
+          if (block.data.text) {
+            textContent += block.data.text + ' ';
+          } else if (block.data.items) {
+            textContent += extractTextFromItems(block.data.items) + ' ';
+          } else if (block.data.code) {
+            textContent += block.data.code + ' ';
+          } else if (block.data.caption) {
+            textContent += block.data.caption + ' ';
+          }
+        }
+      });
+      
+      // Strip HTML Tags
+      const cleanText = textContent.replace(/<[^>]*>/g, '').trim();
+      const charCount = cleanText.length;
+      const words = cleanText === '' ? [] : cleanText.split(/\\s+/);
+      const wordCount = words.length;
+      const readTime = Math.max(1, Math.ceil(wordCount / 200));
+      
+      self.postMessage({ wordCount, charCount, readTime });
+    };
+  `;
+  
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  statsWorker = new Worker(URL.createObjectURL(blob));
+  
+  statsWorker.onmessage = function(e) {
+    const { wordCount, charCount, readTime } = e.data;
     document.getElementById('statWords').innerText = wordCount;
     document.getElementById('statChars').innerText = charCount;
     const lessThanMinText = getTranslation('sidebar.readTimeValueLessThanMinute', '< 1 min');
     const minPattern = getTranslation('sidebar.readTimeValueMinutes', '{time} min');
     document.getElementById('statReadTime').innerText = wordCount === 0 ? lessThanMinText : minPattern.replace('{time}', readTime);
+  };
+}
+
+async function updateStats() {
+  if (!editor || !editor.save) return;
+  try {
+    const data = await editor.save();
+    if (!statsWorker) initStatsWorker();
+    statsWorker.postMessage(data.blocks || []);
   } catch (err) {
     console.error('Erro ao atualizar estatísticas:', err);
   }
@@ -1881,7 +2059,6 @@ async function saveActiveDocument(forceSaveAs = false) {
   try {
     const blocksData = await editor.save();
     doc.blocksData = blocksData;
-    const markdownText = editorBlocksToMarkdown(blocksData.blocks);
 
     if (window.__TAURI__) {
       let path = doc.filePath;
@@ -1905,6 +2082,15 @@ async function saveActiveDocument(forceSaveAs = false) {
         document.getElementById('documentTitleInput').value = fileName;
       }
 
+      // Copy any pending absolute image paths to relative media/ folder
+      const imagesUpdated = await copyPendingImagesToLocalMedia(doc);
+      if (imagesUpdated) {
+        isRendering = true;
+        await editor.render(sanitizeBlocksData(doc.blocksData));
+        isRendering = false;
+      }
+
+      const markdownText = editorBlocksToMarkdown(doc.blocksData.blocks);
       await window.__TAURI__.fs.writeTextFile(path, markdownText);
       doc.isDirty = false;
       showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
