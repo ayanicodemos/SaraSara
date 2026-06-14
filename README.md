@@ -4,6 +4,10 @@
 
 Este aplicativo foi criado para escritores, acadêmicos e programadores que desejam a simplicidade do Markdown combinada com o poder e a elegância de um processador de texto visual moderno.
 
+### 🌐 Versão Web & Demonstração Online
+O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (com salvamento local via localStorage), dispensando qualquer tipo de instalação. Você pode testar e usar o aplicativo online diretamente em:
+👉 **[https://ayanicodemos.github.io/SaraSara/](https://ayanicodemos.github.io/SaraSara/)**
+
 ---
 
 ## 🌟 Recursos Principais
@@ -34,6 +38,9 @@ Este aplicativo foi criado para escritores, acadêmicos e programadores que dese
 * **Abrir arquivo (`Cmd + O` / `Ctrl + O`):** Abra qualquer arquivo `.md` do seu computador.
 * **Salvar (`Cmd + S` / `Ctrl + S`):** Grava as alterações diretamente no arquivo local.
 * **Salvar Como (`Cmd + Shift + S` / `Ctrl + Shift + S`):** Crie uma nova cópia do documento no diretório de sua escolha.
+
+### 6. Versão 100% Web Sem Instalação
+* O **SaraSara** também pode ser executado diretamente no navegador. Ele salva e gerencia documentos localmente, permitindo exportar o resultado final fazendo o download do arquivo `.md`.
 
 ---
 
