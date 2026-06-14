@@ -1,0 +1,1593 @@
+// Copyright (C) 2026 Aya Nicodemos (Ayasoft Studios)
+// SaraSara is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License.
+
+/**
+ * SARASARA - APPLE PAGES STYLED MARKDOWN EDITOR
+ * Core Application Logic
+ */
+
+let editor;
+let documents = [];
+let activeDocId = null;
+let isRendering = false;
+
+// 1. CUSTOM FRONTEND-ONLY IMAGE TOOL FOR EDITOR.JS
+class SimpleImage {
+  static get toolbox() {
+    return {
+      title: 'Imagem',
+      icon: '<span class="material-symbols-outlined fs-5">image</span>'
+    };
+  }
+
+  constructor({ data, api }) {
+    this.data = data || {};
+    this.api = api;
+    this.wrapper = undefined;
+  }
+
+  render() {
+    this.wrapper = document.createElement('div');
+    this.wrapper.classList.add('custom-image-block');
+
+    if (this.data.url) {
+      this._renderImage(this.data.url);
+    } else {
+      this._renderPlaceholder();
+    }
+
+    return this.wrapper;
+  }
+
+  _renderPlaceholder() {
+    this.wrapper.innerHTML = '';
+    const placeholder = document.createElement('div');
+    placeholder.classList.add('custom-image-placeholder');
+    placeholder.innerHTML = `
+      <span class="material-symbols-outlined">image</span>
+      <div class="fw-semibold">Adicionar Imagem</div>
+      <div class="small text-muted mt-1">(Clique para fazer upload local)</div>
+    `;
+
+    placeholder.addEventListener('click', () => {
+      const fileInput = document.getElementById('localImageFileInput');
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64 = event.target.result;
+            this.data.url = base64;
+            this.data.caption = file.name;
+            this.data.alt = file.name;
+            this._renderImage(base64);
+            // Refresh sidebar formatting input states
+            setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 100);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      fileInput.click();
+    });
+
+    this.wrapper.appendChild(placeholder);
+  }
+
+  _renderImage(url) {
+    this.wrapper.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = this.data.alt || 'Imagem do documento';
+
+    const caption = document.createElement('div');
+    caption.classList.add('custom-image-caption');
+    caption.contentEditable = true;
+    caption.setAttribute('placeholder', 'Digite uma legenda...');
+    caption.innerText = this.data.caption || '';
+    
+    caption.addEventListener('blur', () => {
+      this.data.caption = caption.innerText;
+    });
+
+    this.wrapper.appendChild(img);
+    this.wrapper.appendChild(caption);
+  }
+
+  save(blockContent) {
+    const captionNode = blockContent.querySelector('.custom-image-caption');
+    return {
+      url: this.data.url || '',
+      caption: captionNode ? captionNode.innerText : (this.data.caption || ''),
+      alt: this.data.alt || ''
+    };
+  }
+}
+
+// 2. INITIALIZE EDITOR.JS
+document.addEventListener('DOMContentLoaded', () => {
+  const CodeTool = window.CodeTool;
+  editor = new EditorJS({
+    holder: 'editorjs',
+    tools: {
+      header: {
+        class: Header,
+        inlineToolbar: false, // Disabling floating inline toolbar, styling handled via sidebar
+        config: {
+          placeholder: 'Título...',
+          levels: [1, 2, 3],
+          defaultLevel: 2
+        }
+      },
+      list: {
+        class: List,
+        inlineToolbar: false
+      },
+      code: {
+        class: CodeTool,
+        config: {
+          placeholder: 'Insira seu código...'
+        }
+      },
+      quote: {
+        class: Quote,
+        inlineToolbar: false,
+        config: {
+          quotePlaceholder: 'Citação...',
+          captionPlaceholder: 'Autor...'
+        }
+      },
+      table: {
+        class: Table,
+        inlineToolbar: false
+      },
+      inlineCode: {
+        class: InlineCode
+      },
+      image: {
+        class: SimpleImage
+      },
+      delimiter: {
+        class: Delimiter
+      }
+    },
+    placeholder: 'Comece a escrever seu documento...',
+    onReady: async () => {
+      setupEventListeners();
+      const loaded = await loadFromLocalStorage();
+      if (!loaded) {
+        createNewDocument('documento.md');
+      }
+      updateOutline();
+      updateStats();
+      updateActiveBlockStylesInSidebar();
+    },
+    onChange: () => {
+      if (isRendering) return;
+      markActiveDocumentAsDirty();
+      updateOutline();
+      
+      // Debounce saving and statistics counting to prevent editor validation conflicts during typing
+      if (window.statsTimeout) clearTimeout(window.statsTimeout);
+      window.statsTimeout = setTimeout(async () => {
+        // Save current editor content to the active document state first
+        if (activeDocId) {
+          const activeDoc = documents.find(d => d.id === activeDocId);
+          if (activeDoc) {
+            try {
+              activeDoc.blocksData = await editor.save();
+            } catch (e) {
+              console.error("Erro ao auto-salvar blocksData:", e);
+            }
+          }
+        }
+        await updateStats();
+        saveAllToLocalStorage();
+      }, 400);
+    }
+  });
+});
+
+// 3. LISTENERS & SYNC LOGIC
+function setupEventListeners() {
+  // Theme Toggle
+  const themeToggle = document.getElementById('btnThemeToggle');
+  const themeIcon = document.getElementById('themeIcon');
+  themeToggle.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    let newTheme = 'dark';
+    if (currentTheme === 'dark') {
+      newTheme = 'light';
+      themeIcon.innerText = 'dark_mode';
+    } else {
+      newTheme = 'dark';
+      themeIcon.innerText = 'light_mode';
+    }
+    document.documentElement.setAttribute('data-theme', newTheme);
+  });
+
+  // Focus / Distraction-Free Mode
+  const btnFocusMode = document.getElementById('btnFocusMode');
+  const btnExitFocus = document.getElementById('btnExitFocus');
+  const appContainer = document.querySelector('.app-container');
+  
+  function toggleFocusMode() {
+    appContainer.classList.toggle('focus-active');
+  }
+  btnFocusMode.addEventListener('click', toggleFocusMode);
+  btnExitFocus.addEventListener('click', toggleFocusMode);
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && appContainer.classList.contains('focus-active')) {
+      toggleFocusMode();
+    }
+  });
+
+  // Outline (Left Sidebar) collapse
+  const btnToggleOutline = document.getElementById('btnToggleOutline');
+  const btnCloseOutline = document.getElementById('btnCloseOutline');
+  const sidebarOutline = document.getElementById('sidebarOutline');
+  
+  function toggleOutline() {
+    sidebarOutline.classList.toggle('collapsed');
+    btnToggleOutline.classList.toggle('active');
+  }
+  btnToggleOutline.addEventListener('click', toggleOutline);
+  btnCloseOutline.addEventListener('click', toggleOutline);
+
+  // Format Sidebar (Right Sidebar) collapse
+  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const sidebarFormat = document.getElementById('sidebarFormat');
+  
+  function toggleFormatSidebar() {
+    sidebarFormat.classList.toggle('collapsed');
+    btnToggleSidebar.classList.toggle('active');
+  }
+  btnToggleSidebar.addEventListener('click', toggleFormatSidebar);
+
+  // Document Rename Input Validation
+  const titleInput = document.getElementById('documentTitleInput');
+  titleInput.addEventListener('blur', () => {
+    let val = titleInput.value.trim();
+    if (val === '') val = 'documento.md';
+    if (!val.endsWith('.md')) val += '.md';
+    titleInput.value = val;
+    
+    // Sync tab title
+    if (activeDocId) {
+      const doc = documents.find(d => d.id === activeDocId);
+      if (doc) {
+        doc.title = val;
+        renderTabs();
+        saveAllToLocalStorage();
+      }
+    }
+  });
+  titleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      titleInput.blur();
+    }
+  });
+
+  // Core Operations
+  document.getElementById('btnNew').addEventListener('click', () => {
+    createNewDocument();
+  });
+
+  const btnOpen = document.getElementById('btnOpen');
+  const fileImporter = document.getElementById('fileImporter');
+  btnOpen.addEventListener('click', () => {
+    if (window.__TAURI__ || window.showOpenFilePicker) {
+      openLocalFile();
+    } else {
+      fileImporter.click();
+    }
+  });
+  fileImporter.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        const blocksData = markdownToEditorBlocks(text);
+        const newDoc = {
+          id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+          title: file.name,
+          blocksData: blocksData,
+          fileHandle: null,
+          filePath: null,
+          isDirty: false
+        };
+        documents.push(newDoc);
+        switchDocument(newDoc.id);
+      };
+      reader.readAsText(file);
+    }
+  });
+
+  document.getElementById('btnSave').addEventListener('click', () => saveActiveDocument(false));
+  document.getElementById('btnSaveAs').addEventListener('click', () => saveActiveDocument(true));
+  document.getElementById('btnNewTab').addEventListener('click', () => createNewDocument());
+
+  // Keyboard Shortcuts: 
+  // - Ctrl/Cmd + S to save, Ctrl/Cmd + Shift + S to Save As
+  // - Ctrl/Cmd + T or Ctrl/Cmd + N to open a new tab
+  // - Ctrl/Cmd + W to close the active tab
+  // - Ctrl/Cmd + O to open a file
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    
+    // Save (Cmd+S / Ctrl+S) & Save As (Cmd+Shift+S / Ctrl+Shift+S)
+    if ((e.metaKey || e.ctrlKey) && key === 's') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        saveActiveDocument(true); // Save As
+      } else {
+        saveActiveDocument(false); // Save
+      }
+    }
+    
+    // New Tab (Cmd+T / Ctrl+T / Cmd+N / Ctrl+N)
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (key === 't' || key === 'n')) {
+      e.preventDefault();
+      createNewDocument();
+    }
+    
+    // Close Tab (Cmd+W / Ctrl+W)
+    if ((e.metaKey || e.ctrlKey) && key === 'w') {
+      e.preventDefault();
+      if (activeDocId) {
+        closeDocument(activeDocId);
+      }
+    }
+    
+    // Open File (Cmd+O / Ctrl+O)
+    if ((e.metaKey || e.ctrlKey) && key === 'o') {
+      e.preventDefault();
+      const btnOpen = document.getElementById('btnOpen');
+      if (btnOpen) {
+        btnOpen.click();
+      }
+    }
+  });
+
+  // Undo & Redo (simulate command or browser command)
+  document.getElementById('btnUndo').addEventListener('click', () => {
+    document.execCommand('undo', false, null);
+  });
+  document.getElementById('btnRedo').addEventListener('click', () => {
+    document.execCommand('redo', false, null);
+  });
+
+  // Insert Blocks from top bar
+  document.getElementById('btnInsertTable').addEventListener('click', () => {
+    editor.blocks.insert('table', { content: [['Coluna 1', 'Coluna 2'], ['', '']] });
+  });
+  document.getElementById('btnInsertCode').addEventListener('click', () => {
+    editor.blocks.insert('code', { code: '// Escreva seu código aqui\n', language: 'javascript' });
+  });
+  document.getElementById('btnInsertImage').addEventListener('click', () => {
+    editor.blocks.insert('image', {});
+  });
+  document.getElementById('btnInsertQuote').addEventListener('click', () => {
+    editor.blocks.insert('quote', { text: 'Citação...', caption: 'Autor' });
+  });
+  document.getElementById('btnInsertDivider').addEventListener('click', () => {
+    editor.blocks.insert('delimiter', {});
+  });
+
+  // Text Styling - Bind sidebar controls using preventDefault to keep editor focused
+  const styles = [
+    { id: 'btnFormatBold', cmd: 'bold' },
+    { id: 'btnFormatItalic', cmd: 'italic' },
+    { id: 'btnFormatStrike', cmd: 'strikeThrough' }
+  ];
+
+  styles.forEach(style => {
+    const btn = document.getElementById(style.id);
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => {
+      document.execCommand(style.cmd, false, null);
+      updateFormattingPanelStates();
+    });
+  });
+
+  // Inline code styling
+  const btnInlineCode = document.getElementById('btnFormatInlineCode');
+  btnInlineCode.addEventListener('mousedown', (e) => e.preventDefault());
+  btnInlineCode.addEventListener('click', () => {
+    const selection = window.getSelection();
+    if (!selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+      
+      // Check if already in code tag
+      const parent = selection.anchorNode.parentElement;
+      if (parent && parent.className === 'inline-code') {
+        // Unwrap
+        const textNode = document.createTextNode(parent.textContent);
+        parent.parentNode.replaceChild(textNode, parent);
+      } else {
+        // Wrap
+        const codeNode = document.createElement('code');
+        codeNode.className = 'inline-code';
+        codeNode.innerText = selectedText;
+        range.deleteContents();
+        range.insertNode(codeNode);
+      }
+      updateFormattingPanelStates();
+    }
+  });
+
+  // Link format button
+  const btnFormatLink = document.getElementById('btnFormatLink');
+  btnFormatLink.addEventListener('mousedown', (e) => e.preventDefault());
+  btnFormatLink.addEventListener('click', () => {
+    const selection = window.getSelection();
+    if (selection.isCollapsed) {
+      alert('Selecione um texto antes de inserir um link.');
+      return;
+    }
+    const url = prompt('Inserir Link URL:', 'https://');
+    if (url) {
+      document.execCommand('createLink', false, url);
+      updateFormattingPanelStates();
+    }
+  });
+
+  // Alignment buttons
+  const aligns = [
+    { id: 'btnAlignLeft', cmd: 'justifyLeft' },
+    { id: 'btnAlignCenter', cmd: 'justifyCenter' },
+    { id: 'btnAlignRight', cmd: 'justifyRight' },
+    { id: 'btnAlignJustify', cmd: 'justifyFull' }
+  ];
+  aligns.forEach(align => {
+    const btn = document.getElementById(align.id);
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => {
+      document.execCommand(align.cmd, false, null);
+      updateFormattingPanelStates();
+    });
+  });
+
+  // Sidebar Paragraph Style dropdown triggers
+  document.querySelectorAll('.dropdown-item[data-style]').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const style = e.target.getAttribute('data-style');
+      if (style === 'paragraph') changeCurrentBlockType('paragraph');
+      else if (style === 'h1') changeCurrentBlockType('header', { level: 1 });
+      else if (style === 'h2') changeCurrentBlockType('header', { level: 2 });
+      else if (style === 'h3') changeCurrentBlockType('header', { level: 3 });
+      else if (style === 'quote') changeCurrentBlockType('quote');
+    });
+  });
+
+  // Sidebar List triggers
+  document.getElementById('btnListBullet').addEventListener('click', () => {
+    changeCurrentBlockType('list', { style: 'unordered' });
+  });
+  document.getElementById('btnListOrdered').addEventListener('click', () => {
+    changeCurrentBlockType('list', { style: 'ordered' });
+  });
+  document.getElementById('btnListNone').addEventListener('click', () => {
+    changeCurrentBlockType('paragraph');
+  });
+
+  // Sync cursor selection with format buttons active state
+  document.addEventListener('selectionchange', updateFormattingPanelStates);
+  
+  // Track Editor clicks and keydowns to update sidebars contextually
+  document.getElementById('editorjs').addEventListener('click', () => {
+    setTimeout(updateActiveBlockStylesInSidebar, 100);
+  });
+  document.getElementById('editorjs').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+      setTimeout(updateActiveBlockStylesInSidebar, 100);
+    }
+  });
+
+  // Contextual Image elements change triggers
+  document.getElementById('imageSrcInput').addEventListener('change', updateActiveImageBlock);
+  document.getElementById('imageCaptionInput').addEventListener('change', updateActiveImageBlock);
+  document.getElementById('imageAltInput').addEventListener('change', updateActiveImageBlock);
+
+  // Local image file uploader inside right formatting sidebar
+  const btnUploadImageLocal = document.getElementById('btnUploadImageLocal');
+  const localImageFileInput = document.getElementById('localImageFileInput');
+  btnUploadImageLocal.addEventListener('click', () => {
+    localImageFileInput.click();
+  });
+  localImageFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        document.getElementById('imageSrcInput').value = event.target.result;
+        updateActiveImageBlock();
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Code Language select trigger
+  document.getElementById('codeLangSelect').addEventListener('change', async (e) => {
+    const index = editor.blocks.getCurrentBlockIndex();
+    const blockApi = editor.blocks.getBlockByIndex(index);
+    if (blockApi && blockApi.name === 'code') {
+      const data = await blockApi.save();
+      const code = data.data.code;
+      safeReplaceBlock(index, 'code', { code: code, language: e.target.value });
+    }
+  });
+
+  // Table buttons listeners
+  document.getElementById('btnTableAddRow').addEventListener('click', addRowToTable);
+  document.getElementById('btnTableAddCol').addEventListener('click', addColToTable);
+  document.getElementById('btnTableDelRow').addEventListener('click', delRowFromTable);
+  document.getElementById('btnTableDelCol').addEventListener('click', delColFromTable);
+}
+
+// 4. SELECTION / FOCUS PANEL STATE SYNC
+function updateFormattingPanelStates() {
+  const isBold = document.queryCommandState('bold');
+  const isItalic = document.queryCommandState('italic');
+  const isStrike = document.queryCommandState('strikeThrough');
+
+  toggleButtonActiveState('btnFormatBold', isBold);
+  toggleButtonActiveState('btnFormatItalic', isItalic);
+  toggleButtonActiveState('btnFormatStrike', isStrike);
+
+  // Alignments
+  toggleButtonActiveState('btnAlignLeft', document.queryCommandState('justifyLeft'));
+  toggleButtonActiveState('btnAlignCenter', document.queryCommandState('justifyCenter'));
+  toggleButtonActiveState('btnAlignRight', document.queryCommandState('justifyRight'));
+  toggleButtonActiveState('btnAlignJustify', document.queryCommandState('justifyFull'));
+
+  // Check if cursor is on inline code
+  const selection = window.getSelection();
+  let isInlineCode = false;
+  if (selection.rangeCount > 0 && selection.anchorNode) {
+    const parent = selection.anchorNode.parentElement;
+    if (parent && (parent.tagName === 'CODE' || parent.closest('code.inline-code'))) {
+      isInlineCode = true;
+    }
+  }
+  toggleButtonActiveState('btnFormatInlineCode', isInlineCode);
+}
+
+function toggleButtonActiveState(id, isActive) {
+  const btn = document.getElementById(id);
+  if (btn) {
+    if (isActive) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+}
+
+// 5. UPDATE BLOCK STYLES SIDEBAR CONTEXTUALLY
+async function updateActiveBlockStylesInSidebar() {
+  if (!editor || !editor.blocks) return;
+  try {
+    const index = editor.blocks.getCurrentBlockIndex();
+    if (index < 0) return;
+
+    const blockApi = editor.blocks.getBlockByIndex(index);
+    if (!blockApi) return;
+
+    const blockType = blockApi.name;
+
+    // Update paragraph style dropdown label
+    let styleLabel = "Corpo (Parágrafo)";
+    if (blockType === 'header') {
+      const data = await blockApi.save();
+      styleLabel = `Título ${data.data.level || 2}`;
+    } else if (blockType === 'quote') {
+      styleLabel = "Citação";
+    } else if (blockType === 'code') {
+      styleLabel = "Bloco de Código";
+    } else if (blockType === 'list') {
+      styleLabel = "Lista";
+    }
+    document.getElementById('currentStyleLabel').innerText = styleLabel;
+
+    // Update list styles active state
+    if (blockType === 'list') {
+      const data = await blockApi.save();
+      const isOrdered = data.data.style === 'ordered';
+      toggleButtonActiveState('btnListBullet', !isOrdered);
+      toggleButtonActiveState('btnListOrdered', isOrdered);
+      toggleButtonActiveState('btnListNone', false);
+    } else {
+      toggleButtonActiveState('btnListBullet', false);
+      toggleButtonActiveState('btnListOrdered', false);
+      toggleButtonActiveState('btnListNone', true);
+    }
+
+    // Toggle Contextual Sidebar panels
+    const contextSidebar = document.getElementById('contextualEditor');
+    const codeOptions = document.getElementById('contextCodeOptions');
+    const imageOptions = document.getElementById('contextImageOptions');
+    const tableOptions = document.getElementById('contextTableOptions');
+
+    contextSidebar.classList.add('d-none');
+    codeOptions.classList.add('d-none');
+    imageOptions.classList.add('d-none');
+    tableOptions.classList.add('d-none');
+
+    if (blockType === 'code') {
+      contextSidebar.classList.remove('d-none');
+      codeOptions.classList.remove('d-none');
+      document.getElementById('contextTitle').innerText = "Configuração do Código";
+      
+      const data = await blockApi.save();
+      document.getElementById('codeLangSelect').value = data.data.language || 'javascript';
+    } else if (blockType === 'image') {
+      contextSidebar.classList.remove('d-none');
+      imageOptions.classList.remove('d-none');
+      document.getElementById('contextTitle').innerText = "Opções da Imagem";
+      
+      const data = await blockApi.save();
+      document.getElementById('imageSrcInput').value = data.data.url || '';
+      document.getElementById('imageCaptionInput').value = data.data.caption || '';
+      document.getElementById('imageAltInput').value = data.data.alt || '';
+    } else if (blockType === 'table') {
+      contextSidebar.classList.remove('d-none');
+      tableOptions.classList.remove('d-none');
+      document.getElementById('contextTitle').innerText = "Controles da Tabela";
+    }
+  } catch (err) {
+    // block API is sometimes not fully ready during rapid clicks
+  }
+}
+
+// Helper to safely replace a block by deleting and inserting asynchronously
+function safeReplaceBlock(index, type, data, config = {}, needToFocus = true, callback = null) {
+  if (!editor || !editor.blocks) return;
+  try {
+    editor.blocks.delete(index);
+    setTimeout(() => {
+      try {
+        editor.blocks.insert(type, data, config, index, needToFocus);
+        if (callback) {
+          setTimeout(callback, 100);
+        }
+      } catch (err) {
+        console.error("Erro ao inserir bloco no safeReplaceBlock:", err);
+      }
+    }, 0);
+  } catch (err) {
+    console.error("Erro ao deletar bloco no safeReplaceBlock:", err);
+  }
+}
+
+// 6. PROGRAMMATIC BLOCK SWAPPING
+async function changeCurrentBlockType(newType, additionalData = {}) {
+  const index = editor.blocks.getCurrentBlockIndex();
+  if (index < 0) return;
+
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (!blockApi) return;
+
+  const savedData = await blockApi.save();
+  const oldText = savedData.data.text || '';
+
+  let newData = {};
+  if (newType === 'header') {
+    newData = {
+      text: oldText,
+      level: additionalData.level || 2
+    };
+  } else if (newType === 'paragraph') {
+    newData = {
+      text: oldText
+    };
+  } else if (newType === 'quote') {
+    newData = {
+      text: oldText,
+      caption: '',
+      alignment: 'left'
+    };
+  } else if (newType === 'code') {
+    newData = {
+      code: oldText.replace(/<[^>]+>/g, ''), // strip tags
+      language: 'javascript'
+    };
+  } else if (newType === 'list') {
+    newData = {
+      style: additionalData.style || 'unordered',
+      items: [oldText || 'Novo item']
+    };
+  }
+
+  // Swap block using safe helper
+  safeReplaceBlock(index, newType, newData, {}, true, () => {
+    updateActiveBlockStylesInSidebar();
+    updateOutline();
+  });
+}
+
+// 7. CONTEXTUAL TABLE MODIFIERS
+async function addRowToTable() {
+  const index = editor.blocks.getCurrentBlockIndex();
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (blockApi && blockApi.name === 'table') {
+    const data = await blockApi.save();
+    const content = data.data.content;
+    if (content.length > 0) {
+      const cols = content[0].length;
+      content.push(Array(cols).fill(''));
+      safeReplaceBlock(index, 'table', { content });
+    }
+  }
+}
+
+async function addColToTable() {
+  const index = editor.blocks.getCurrentBlockIndex();
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (blockApi && blockApi.name === 'table') {
+    const data = await blockApi.save();
+    const content = data.data.content;
+    content.forEach(row => row.push(''));
+    safeReplaceBlock(index, 'table', { content });
+  }
+}
+
+async function delRowFromTable() {
+  const index = editor.blocks.getCurrentBlockIndex();
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (blockApi && blockApi.name === 'table') {
+    const data = await blockApi.save();
+    const content = data.data.content;
+    if (content.length > 1) {
+      content.pop();
+      safeReplaceBlock(index, 'table', { content });
+    }
+  }
+}
+
+async function delColFromTable() {
+  const index = editor.blocks.getCurrentBlockIndex();
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (blockApi && blockApi.name === 'table') {
+    const data = await blockApi.save();
+    const content = data.data.content;
+    if (content[0].length > 1) {
+      content.forEach(row => row.pop());
+      safeReplaceBlock(index, 'table', { content });
+    }
+  }
+}
+
+// Update Active Image block data
+async function updateActiveImageBlock() {
+  const index = editor.blocks.getCurrentBlockIndex();
+  const blockApi = editor.blocks.getBlockByIndex(index);
+  if (blockApi && blockApi.name === 'image') {
+    const url = document.getElementById('imageSrcInput').value;
+    const caption = document.getElementById('imageCaptionInput').value;
+    const alt = document.getElementById('imageAltInput').value;
+    
+    // Replace with new data to redraw SimpleImage block
+    safeReplaceBlock(index, 'image', { url, caption, alt });
+  }
+}
+
+// 8. DOCUMENT SUMÁRIO OUTLINE DRAWER
+function updateOutline() {
+  const container = document.getElementById('outlineContainer');
+  if (!container) return;
+
+  const headers = document.querySelectorAll('#editorjs .ce-header');
+
+  if (headers.length === 0) {
+    container.innerHTML = `<p class="text-muted small">Crie cabeçalhos (H1, H2, H3) para visualizar a estrutura do documento aqui.</p>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  headers.forEach((header, index) => {
+    const tagName = header.tagName.toLowerCase();
+    const text = header.innerText.trim();
+
+    if (text === '') return;
+
+    if (!header.id) {
+      header.id = `header-node-${index}`;
+    }
+
+    const link = document.createElement('a');
+    link.href = `#${header.id}`;
+    link.classList.add('outline-item');
+
+    if (tagName === 'h1') link.classList.add('outline-h1');
+    else if (tagName === 'h2') link.classList.add('outline-h2');
+    else if (tagName === 'h3') link.classList.add('outline-h3');
+
+    link.innerText = text;
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    container.appendChild(link);
+  });
+}
+
+// 9. DOCUMENT CHARACTER & WORD STATISTICS
+async function updateStats() {
+  if (!editor || !editor.save) return;
+  try {
+    const data = await editor.save();
+    let textContent = '';
+
+    data.blocks.forEach(block => {
+      if (block.data.text) {
+        textContent += block.data.text + ' ';
+      } else if (block.data.items) {
+        textContent += block.data.items.join(' ') + ' ';
+      } else if (block.data.code) {
+        textContent += block.data.code + ' ';
+      } else if (block.data.caption) {
+        textContent += block.data.caption + ' ';
+      }
+    });
+
+    // Strip HTML Tags
+    const cleanText = textContent.replace(/<[^>]*>/g, '').trim();
+
+    const charCount = cleanText.length;
+    const words = cleanText === '' ? [] : cleanText.split(/\s+/);
+    const wordCount = words.length;
+
+    const readTime = Math.max(1, Math.ceil(wordCount / 200));
+
+    document.getElementById('statWords').innerText = wordCount;
+    document.getElementById('statChars').innerText = charCount;
+    document.getElementById('statReadTime').innerText = wordCount === 0 ? '< 1 min' : `${readTime} min`;
+  } catch (err) {
+    console.error('Erro ao atualizar estatísticas:', err);
+  }
+}
+
+// 10. EXPORT EDITOR.JS TO CLEAN MARKDOWN TEXT
+async function exportMarkdown() {
+  try {
+    const outputData = await editor.save();
+    const markdownText = editorBlocksToMarkdown(outputData.blocks);
+
+    const titleInput = document.getElementById('documentTitleInput');
+    const fileName = titleInput.value.trim() || 'documento.md';
+
+    const blob = new Blob([markdownText], { type: 'text/markdown;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (e) {
+    console.error('Erro ao exportar Markdown:', e);
+    alert('Houve um erro ao gerar o arquivo Markdown.');
+  }
+}
+
+function editorBlocksToMarkdown(blocks) {
+  let md = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+
+    switch (block.type) {
+      case 'header':
+        const level = '#'.repeat(block.data.level || 2);
+        md.push(`${level} ${htmlToMarkdownInline(block.data.text)}`);
+        break;
+
+      case 'paragraph':
+        md.push(htmlToMarkdownInline(block.data.text));
+        break;
+
+      case 'list':
+        const style = block.data.style === 'ordered' ? '1.' : '-';
+        const listMd = block.data.items.map((item, idx) => {
+          const prefix = style === '1.' ? `${idx + 1}.` : '-';
+          return `${prefix} ${htmlToMarkdownInline(item)}`;
+        }).join('\n');
+        md.push(listMd);
+        break;
+
+      case 'quote':
+        const text = htmlToMarkdownInline(block.data.text).replace(/\n/g, '\n> ');
+        const caption = block.data.caption ? `\n> \n> — ${htmlToMarkdownInline(block.data.caption)}` : '';
+        md.push(`> ${text}${caption}`);
+        break;
+
+      case 'code':
+        const lang = block.data.language || '';
+        md.push(`\`\`\`${lang}\n${block.data.code}\n\`\`\``);
+        break;
+
+      case 'table':
+        const rows = block.data.content;
+        if (rows && rows.length > 0) {
+          const headerRow = rows[0].map(cell => htmlToMarkdownInline(cell)).join(' | ');
+          const dividerRow = rows[0].map(() => '---').join(' | ');
+          const bodyRows = rows.slice(1).map(row => row.map(cell => htmlToMarkdownInline(cell)).join(' | ')).join('\n| ');
+          
+          let tableMd = `| ${headerRow} |\n| ${dividerRow} |`;
+          if (bodyRows && bodyRows.length > 0) {
+            tableMd += `\n| ${bodyRows} |`;
+          }
+          md.push(tableMd);
+        }
+        break;
+
+      case 'image':
+        const altText = block.data.alt || block.data.caption || 'Imagem';
+        const title = block.data.caption ? ` "${block.data.caption}"` : '';
+        md.push(`![${altText}](${block.data.url}${title})`);
+        break;
+
+      case 'delimiter':
+        md.push('---');
+        break;
+        
+      default:
+        break;
+    }
+  }
+
+  return md.join('\n\n');
+}
+
+function htmlToMarkdownInline(html) {
+  if (!html) return '';
+  let text = html;
+
+  // 1. Links <a href="url">text</a> -> [text](url)
+  text = text.replace(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g, '[$2]($1)');
+
+  // 2. Bold <b>text</b> or <strong>text</strong> -> **text**
+  text = text.replace(/<(b|strong)[^>]*>([^<]+)<\/\1>/g, '**$2**');
+
+  // 3. Italic <i>text</i> or <em>text</em> -> *text*
+  text = text.replace(/<(i|em)[^>]*>([^<]+)<\/\1>/g, '*$2*');
+
+  // 4. Strikethrough <del> or <s> -> ~~text~~
+  text = text.replace(/<(del|s)[^>]*>([^<]+)<\/\1>/g, '~~$2~~');
+
+  // 5. Inline Code <code class="inline-code">text</code> -> `text`
+  text = text.replace(/<code[^>]*>([^<]+)<\/code>/g, '`$2`');
+
+  // Convert HTML entities back
+  text = text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+  return text;
+}
+
+// Sanitizes Editor.js block data by removing duplicate or invalid (like boolean) block IDs.
+// It also ensures that the blocks array is never empty (defaults to a single empty paragraph block),
+// which completely prevents the "Cannot read properties of undefined (reading 'holder')" Editor.js crash.
+function sanitizeBlocksData(blocksData) {
+  if (!blocksData) {
+    return { blocks: [{ type: 'paragraph', data: { text: '' } }] };
+  }
+  
+  // Clone to avoid side effects
+  const cleanData = { ...blocksData };
+  if (!cleanData.blocks || cleanData.blocks.length === 0) {
+    cleanData.blocks = [{ type: 'paragraph', data: { text: '' } }];
+    return cleanData;
+  }
+  
+  const seenIds = new Set();
+  const sanitizedBlocks = [];
+  
+  cleanData.blocks.forEach(block => {
+    if (!block) return;
+    const cleanBlock = { ...block };
+    if (cleanBlock.id) {
+      const idStr = String(cleanBlock.id).trim();
+      if (typeof cleanBlock.id !== 'string' || idStr === 'true' || idStr === 'false' || idStr === '' || seenIds.has(idStr)) {
+        delete cleanBlock.id;
+      } else {
+        seenIds.add(idStr);
+      }
+    }
+    sanitizedBlocks.push(cleanBlock);
+  });
+  
+  if (sanitizedBlocks.length === 0) {
+    sanitizedBlocks.push({ type: 'paragraph', data: { text: '' } });
+  }
+  
+  cleanData.blocks = sanitizedBlocks;
+  return cleanData;
+}
+
+// 11. IMPORT MARKDOWN TEXT TO EDITOR.JS BLOCKS
+async function importMarkdown(markdownText) {
+  try {
+    const blocksData = markdownToEditorBlocks(markdownText);
+    await editor.render(sanitizeBlocksData(blocksData));
+    updateOutline();
+    updateStats();
+    setTimeout(() => { updateActiveBlockStylesInSidebar(); }, 150);
+  } catch (e) {
+    console.error('Erro ao renderizar Markdown importado:', e);
+    alert('Houve um erro ao processar o arquivo Markdown.');
+  }
+}
+
+function markdownToEditorBlocks(markdown) {
+  const blocks = [];
+  const lines = markdown.split(/\r?\n/);
+  let i = 0;
+
+  while (i < lines.length) {
+    let line = lines[i];
+
+    // 1. Code Block
+    if (line.trim().startsWith('```')) {
+      const match = line.trim().match(/^```(\w*)/);
+      const language = match ? match[1] : '';
+      let codeContent = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeContent.push(lines[i]);
+        i++;
+      }
+      i++; // Skip closing ```
+      blocks.push({
+        type: 'code',
+        data: {
+          code: codeContent.join('\n'),
+          language: language || 'plaintext'
+        }
+      });
+      continue;
+    }
+
+    // 2. Blockquote
+    if (line.trim().startsWith('>')) {
+      let quoteLines = [];
+      let captionText = '';
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        let text = lines[i].trim().substring(1).trim();
+        if (text.startsWith('—') || text.startsWith('-')) {
+          captionText = text.substring(1).trim();
+        } else {
+          quoteLines.push(text);
+        }
+        i++;
+      }
+      blocks.push({
+        type: 'quote',
+        data: {
+          text: quoteLines.join('<br>'),
+          caption: captionText,
+          alignment: 'left'
+        }
+      });
+      continue;
+    }
+
+    // 3. Table
+    if (line.trim().startsWith('|') && i + 1 < lines.length && lines[i+1].trim().includes('---')) {
+      let tableContent = [];
+      tableContent.push(parseTableRow(line));
+      i += 2; // Skip divider row
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableContent.push(parseTableRow(lines[i]));
+        i++;
+      }
+      blocks.push({
+        type: 'table',
+        data: {
+          content: tableContent
+        }
+      });
+      continue;
+    }
+
+    // 4. Headers
+    const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+      const level = headerMatch[1].length;
+      const text = parseInlineMarkdownToHTML(headerMatch[2]);
+      blocks.push({
+        type: 'header',
+        data: {
+          text: text,
+          level: Math.min(level, 3) // header tool supports levels 1-3
+        }
+      });
+      i++;
+      continue;
+    }
+
+    // 5. Lists (unordered/ordered)
+    const listMatch = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+    if (listMatch) {
+      const style = /^\d/.test(listMatch[2]) ? 'ordered' : 'unordered';
+      let listItems = [parseInlineMarkdownToHTML(listMatch[3])];
+      i++;
+      while (i < lines.length) {
+        const nextLine = lines[i];
+        const nextListMatch = nextLine.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+        if (nextListMatch) {
+          listItems.push(parseInlineMarkdownToHTML(nextListMatch[3]));
+          i++;
+        } else if (nextLine.trim() === '') {
+          if (i + 1 < lines.length && lines[i+1].match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/)) {
+            i++;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      blocks.push({
+        type: 'list',
+        data: {
+          style: style,
+          items: listItems
+        }
+      });
+      continue;
+    }
+
+    // 6. Image
+    const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      const alt = imageMatch[1];
+      let urlAndTitle = imageMatch[2].trim();
+      let url = urlAndTitle;
+      let caption = '';
+      const titleMatch = urlAndTitle.match(/^([^\s]+)\s+"([^"]+)"$/);
+      if (titleMatch) {
+        url = titleMatch[1];
+        caption = titleMatch[2];
+      }
+      blocks.push({
+        type: 'image',
+        data: {
+          url: url,
+          caption: caption || alt || '',
+          alt: alt || ''
+        }
+      });
+      i++;
+      continue;
+    }
+
+    // 7. Divider (Horizontal Rule)
+    if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+      blocks.push({
+        type: 'delimiter',
+        data: {}
+      });
+      i++;
+      continue;
+    }
+
+    // 8. Empty Line
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // 9. Standard Paragraph
+    blocks.push({
+      type: 'paragraph',
+      data: {
+        text: parseInlineMarkdownToHTML(line)
+      }
+    });
+    i++;
+  }
+
+  return {
+    time: Date.now(),
+    blocks: blocks,
+    version: "2.28.2"
+  };
+}
+
+function parseTableRow(rowText) {
+  const cells = rowText.trim().replace(/^\||\|$/g, '').split('|');
+  return cells.map(cell => parseInlineMarkdownToHTML(cell.trim()));
+}
+
+function parseInlineMarkdownToHTML(text) {
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // 1. Bold (**, __)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  html = html.replace(/__([^_]+)__/g, '<b>$1</b>');
+
+  // 2. Italic (*, _)
+  html = html.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+  html = html.replace(/_([^_]+)_/g, '<i>$1</i>');
+
+  // 3. Strikethrough (~~)
+  html = html.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+
+  // 4. Inline Code (`)
+  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+  // 5. Links ([text](url))
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  return html;
+}
+
+// 12. TAB MANAGEMENT & FILE SYSTEM ACCESS API
+function renderTabs() {
+  const container = document.getElementById('tabsScrollArea');
+  if (!container) return;
+
+  container.innerHTML = '';
+  documents.forEach(doc => {
+    const tab = document.createElement('div');
+    tab.className = `tab-item ${doc.id === activeDocId ? 'active' : ''}`;
+
+    if (doc.isDirty) {
+      const dot = document.createElement('span');
+      dot.className = 'tab-dirty-dot';
+      tab.appendChild(dot);
+    }
+
+    const name = document.createElement('span');
+    name.className = 'tab-name';
+    name.innerText = doc.title;
+    tab.appendChild(name);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-tab-close';
+    closeBtn.innerHTML = '×';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeDocument(doc.id);
+    });
+    tab.appendChild(closeBtn);
+
+    tab.addEventListener('click', () => {
+      if (doc.id !== activeDocId) {
+        switchDocument(doc.id);
+      }
+    });
+
+    container.appendChild(tab);
+  });
+}
+
+async function switchDocument(docId) {
+  if (activeDocId === docId) return;
+
+  // Save current active doc blocks
+  if (activeDocId) {
+    const activeDoc = documents.find(d => d.id === activeDocId);
+    if (activeDoc) {
+      try {
+        activeDoc.blocksData = await editor.save();
+      } catch (e) {
+        console.error("Erro ao salvar dados ao trocar de aba:", e);
+      }
+    }
+  }
+
+  activeDocId = docId;
+  const newDoc = documents.find(d => d.id === activeDocId);
+  if (newDoc) {
+    try {
+      isRendering = true;
+      await editor.render(sanitizeBlocksData(newDoc.blocksData));
+      isRendering = false;
+
+      document.getElementById('documentTitleInput').value = newDoc.title;
+      saveAllToLocalStorage();
+
+      renderTabs();
+      updateOutline();
+      updateStats();
+      setTimeout(updateActiveBlockStylesInSidebar, 100);
+    } catch (e) {
+      isRendering = false;
+      console.error("Erro ao carregar documento na troca de aba:", e);
+    }
+  }
+}
+
+function createNewDocument(title = 'Sem título.md', blocksData = { blocks: [] }) {
+  const newDoc = {
+    id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    title: title,
+    blocksData: blocksData,
+    fileHandle: null,
+    filePath: null,
+    isDirty: false
+  };
+  documents.push(newDoc);
+  switchDocument(newDoc.id);
+  renderTabs();
+}
+
+async function closeDocument(docId) {
+  const doc = documents.find(d => d.id === docId);
+  if (!doc) return;
+
+  if (doc.isDirty) {
+    if (!confirm(`O documento "${doc.title}" tem alterações não salvas. Deseja fechar mesmo assim?`)) {
+      return;
+    }
+  }
+
+  const index = documents.findIndex(d => d.id === docId);
+  documents = documents.filter(d => d.id !== docId);
+
+  if (documents.length === 0) {
+    createNewDocument('documento.md');
+  } else if (activeDocId === docId) {
+    const nextActiveIndex = Math.min(index, documents.length - 1);
+    activeDocId = documents[nextActiveIndex].id;
+    const targetDoc = documents[nextActiveIndex];
+
+    isRendering = true;
+    await editor.render(sanitizeBlocksData(targetDoc.blocksData));
+    isRendering = false;
+
+    document.getElementById('documentTitleInput').value = targetDoc.title;
+  }
+
+  saveAllToLocalStorage();
+  renderTabs();
+  updateOutline();
+  updateStats();
+  setTimeout(updateActiveBlockStylesInSidebar, 100);
+}
+
+function saveAllToLocalStorage() {
+  const dataToStore = documents.map(d => ({
+    id: d.id,
+    title: d.title,
+    blocksData: d.blocksData,
+    isDirty: d.isDirty,
+    filePath: d.filePath || null
+  }));
+  localStorage.setItem('sarasara_docs', JSON.stringify(dataToStore));
+  localStorage.setItem('sarasara_active_id', activeDocId);
+}
+
+async function loadFromLocalStorage() {
+  const storedDocs = localStorage.getItem('sarasara_docs') || localStorage.getItem('sara_editor_docs');
+  const storedActiveId = localStorage.getItem('sarasara_active_id') || localStorage.getItem('sara_editor_active_id');
+
+  if (storedDocs && storedActiveId) {
+    try {
+      const parsedDocs = JSON.parse(storedDocs);
+      if (parsedDocs.length === 0) return false;
+      
+      documents = parsedDocs.map(d => ({
+        ...d,
+        fileHandle: null,
+        filePath: d.filePath || null
+      }));
+
+      activeDocId = storedActiveId;
+      const activeDoc = documents.find(d => d.id === activeDocId);
+      
+      isRendering = true;
+      if (activeDoc) {
+        await editor.render(sanitizeBlocksData(activeDoc.blocksData));
+        document.getElementById('documentTitleInput').value = activeDoc.title;
+      } else {
+        activeDocId = documents[0].id;
+        await editor.render(sanitizeBlocksData(documents[0].blocksData));
+        document.getElementById('documentTitleInput').value = documents[0].title;
+      }
+      isRendering = false;
+
+      renderTabs();
+      updateOutline();
+      updateStats();
+      return true;
+    } catch (e) {
+      isRendering = false;
+      console.error("Erro ao carregar dados salvos:", e);
+    }
+  }
+  return false;
+}
+
+async function markActiveDocumentAsDirty() {
+  if (!activeDocId) return;
+  const doc = documents.find(d => d.id === activeDocId);
+  if (doc && !doc.isDirty) {
+    doc.isDirty = true;
+    renderTabs();
+    saveAllToLocalStorage();
+  }
+}
+
+function showNotification(message) {
+  const toast = document.getElementById('appToast');
+  if (toast) {
+    toast.innerText = message;
+    toast.classList.add('visible');
+    setTimeout(() => {
+      toast.classList.remove('visible');
+    }, 2000);
+  }
+}
+
+// 13. FILE SYSTEM ACCESS API INTEGRATION
+async function openLocalFile() {
+  if (window.__TAURI__) {
+    try {
+      const filePath = await window.__TAURI__.dialog.open({
+        multiple: false,
+        filters: [{
+          name: 'Arquivos Markdown',
+          extensions: ['md', 'markdown', 'txt']
+        }]
+      });
+
+      if (!filePath) return;
+
+      const text = await window.__TAURI__.fs.readTextFile(filePath);
+      
+      const pathParts = filePath.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+
+      const alreadyOpen = documents.find(d => d.filePath === filePath);
+      if (alreadyOpen) {
+        switchDocument(alreadyOpen.id);
+        return;
+      }
+
+      const blocksData = markdownToEditorBlocks(text);
+      const newDoc = {
+        id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        title: fileName,
+        blocksData: blocksData,
+        fileHandle: null,
+        filePath: filePath,
+        isDirty: false
+      };
+
+      documents.push(newDoc);
+      switchDocument(newDoc.id);
+    } catch (err) {
+      console.error('Erro ao abrir arquivo físico via Tauri:', err);
+      alert('Não foi possível abrir o arquivo.');
+    }
+    return;
+  }
+
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{
+        description: 'Arquivos Markdown',
+        accept: { 'text/markdown': ['.md', '.markdown'], 'text/plain': ['.txt'] }
+      }],
+      multiple: false
+    });
+
+    const file = await handle.getFile();
+    const text = await file.text();
+
+    const alreadyOpen = documents.find(d => d.fileHandle && d.fileHandle.name === handle.name);
+    if (alreadyOpen) {
+      switchDocument(alreadyOpen.id);
+      return;
+    }
+
+    const blocksData = markdownToEditorBlocks(text);
+    const newDoc = {
+      id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      title: file.name,
+      blocksData: blocksData,
+      fileHandle: handle,
+      filePath: null,
+      isDirty: false
+    };
+
+    documents.push(newDoc);
+    switchDocument(newDoc.id);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Erro ao abrir arquivo físico:', err);
+      alert('Não foi possível abrir o arquivo.');
+    }
+  }
+}
+
+async function saveActiveDocument(forceSaveAs = false) {
+  if (!activeDocId) return;
+  const doc = documents.find(d => d.id === activeDocId);
+  if (!doc) return;
+
+  try {
+    const blocksData = await editor.save();
+    doc.blocksData = blocksData;
+    const markdownText = editorBlocksToMarkdown(blocksData.blocks);
+
+    if (window.__TAURI__) {
+      let path = doc.filePath;
+
+      if (forceSaveAs || !path) {
+        path = await window.__TAURI__.dialog.save({
+          defaultPath: doc.title || 'documento.md',
+          filters: [{
+            name: 'Arquivos Markdown',
+            extensions: ['md']
+          }]
+        });
+
+        if (!path) return;
+
+        const pathParts = path.split('/');
+        const fileName = pathParts[pathParts.length - 1];
+        
+        doc.filePath = path;
+        doc.title = fileName;
+        document.getElementById('documentTitleInput').value = fileName;
+      }
+
+      await window.__TAURI__.fs.writeTextFile(path, markdownText);
+      doc.isDirty = false;
+      showNotification('Salvo com sucesso!');
+      renderTabs();
+      saveAllToLocalStorage();
+      return;
+    }
+
+    let handle = doc.fileHandle;
+
+    if (forceSaveAs || !handle) {
+      if (window.showSaveFilePicker) {
+        handle = await window.showSaveFilePicker({
+          suggestedName: doc.title || 'documento.md',
+          types: [{
+            description: 'Arquivos Markdown',
+            accept: { 'text/markdown': ['.md'] }
+          }]
+        });
+        doc.fileHandle = handle;
+        doc.title = handle.name;
+        document.getElementById('documentTitleInput').value = handle.name;
+      } else {
+        // Fallback for browsers without File System Access API
+        exportMarkdown();
+        doc.isDirty = false;
+        renderTabs();
+        saveAllToLocalStorage();
+        return;
+      }
+    }
+
+    const writable = await handle.createWritable();
+    await writable.write(markdownText);
+    await writable.close();
+
+    doc.isDirty = false;
+    showNotification('Salvo com sucesso!');
+    renderTabs();
+    saveAllToLocalStorage();
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Erro ao salvar arquivo físico:', err);
+      alert('Não foi possível salvar o arquivo.');
+    }
+  }
+}

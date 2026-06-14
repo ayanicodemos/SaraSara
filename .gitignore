@@ -1,0 +1,11 @@
+# Build outputs
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Local build tools
+local_tools/
+
+# OS-specific files
+.DS_Store
+**/.DS_Store
