@@ -4,6 +4,8 @@
 
 Este aplicativo foi criado para escritores, acadêmicos e programadores que desejam a simplicidade do Markdown combinada com o poder e a elegância de um processador de texto visual moderno.
 
+![SaraSara Screenshot](SaraSara.png)
+
 ### 🌐 Versão Web & Demonstração Online
 O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (com salvamento local via localStorage), dispensando qualquer tipo de instalação. Você pode testar e usar o aplicativo online diretamente em:
 👉 **[https://ayanicodemos.github.io/SaraSara/](https://ayanicodemos.github.io/SaraSara/)**
