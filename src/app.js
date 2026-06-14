@@ -1288,6 +1288,15 @@ function getFileBaseName(filePath) {
   return extIndex === -1 ? nameWithExt : nameWithExt.substring(0, extIndex);
 }
 
+// Check if a path is absolute (Unix or Windows)
+function isAbsolutePath(url) {
+  if (!url) return false;
+  if (url.startsWith('/')) return true; // Unix absolute
+  if (/^[a-zA-Z]:[/\\]/.test(url)) return true; // Windows absolute (e.g. C:\ or D:/)
+  if (url.startsWith('\\\\')) return true; // Windows UNC
+  return false;
+}
+
 // Convert image paths to loadable WKWebView source URLs
 function resolveImageUrl(url) {
   if (!url) return '';
@@ -1297,8 +1306,8 @@ function resolveImageUrl(url) {
   
   if (window.__TAURI__) {
     // If it's a relative path containing _media
-    const isRelativeMedia = /^[a-zA-Z0-9_\-\u00C0-\u00FF]+_media[/\\]/.test(url);
-    if (isRelativeMedia) {
+    const isRelative = !isAbsolutePath(url);
+    if (isRelative) {
       if (activeDocId) {
         const doc = documents.find(d => d.id === activeDocId);
         if (doc && doc.filePath) {
@@ -1334,8 +1343,8 @@ async function copyPendingImagesToLocalMedia(doc) {
         const url = block.data.url;
         
         // If it's an absolute file path (doesn't start with any_media/, http, data:)
-        const isRelativeMedia = /^[a-zA-Z0-9_\-\u00C0-\u00FF]+_media[/\\]/.test(url);
-        if (!isRelativeMedia && !url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('data:')) {
+        const isRelative = !isAbsolutePath(url) && !url.startsWith('http:') && !url.startsWith('https:') && !url.startsWith('data:');
+        if (!isRelative) {
           const fileSeparator = url.includes('\\') ? '\\' : '/';
           const fileName = url.split(fileSeparator).pop();
           const destPath = mediaDir + separator + fileName;
