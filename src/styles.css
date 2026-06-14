@@ -500,17 +500,14 @@ a:hover {
   margin: 1.5em 0;
   text-align: center;
   position: relative;
-  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary-dark);
-  padding: 10px;
 }
 
 .custom-image-block img {
+  width: 100%;
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   display: block;
   margin: 0 auto;
 }
@@ -531,6 +528,16 @@ a:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background-color: var(--bg-secondary-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.custom-image-placeholder:hover {
+  background-color: var(--accent-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .custom-image-placeholder span {
