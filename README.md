@@ -1,4 +1,4 @@
-# SaraSara v1.1.0
+# SaraSara v1.2.0
 
 [Português](#português) | [English](#english) | [日本語](#日本語)
 
