@@ -4,6 +4,11 @@
 // the Free Software Foundation, either version 3 of the License.
 
 use tauri::menu::{Menu, Submenu, PredefinedMenuItem, AboutMetadata};
+use tauri::{Emitter, Manager};
+use std::sync::Mutex;
+
+#[derive(Default)]
+struct PendingFilesState(Mutex<Vec<String>>);
 
 fn create_menu(handle: &tauri::AppHandle, lang: &str) -> tauri::Result<Menu<tauri::Wry>> {
   let about_label = match lang {
@@ -153,14 +158,38 @@ fn open_in_browser(url: String) -> Result<(), String> {
   Ok(())
 }
 
+#[tauri::command]
+fn get_pending_files(state: tauri::State<'_, PendingFilesState>) -> Result<Vec<String>, String> {
+  let mut lock = state.0.lock().map_err(|e| e.to_string())?;
+  let files = std::mem::take(&mut *lock);
+  Ok(files)
+}
+
+#[tauri::command]
+fn get_file_modified_time(path: String) -> Result<u64, String> {
+  let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+  let modified = metadata.modified().map_err(|e| e.to_string())?;
+  let duration = modified
+    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+    .map_err(|e| e.to_string())?;
+  Ok(duration.as_millis() as u64)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_persisted_scope::init())
-    .invoke_handler(tauri::generate_handler![update_native_menu, open_in_browser])
+    .invoke_handler(tauri::generate_handler![
+      update_native_menu,
+      open_in_browser,
+      get_pending_files,
+      get_file_modified_time
+    ])
     .setup(|app| {
+      app.manage(PendingFilesState::default());
+
       let handle = app.handle();
       let menu = create_menu(handle, "pt-BR")?;
       app.set_menu(menu)?;
@@ -173,7 +202,34 @@ pub fn run() {
         )?;
       }
       Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    });
+
+  let app = builder
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application");
+
+  app.run(|app_handle, event| {
+    if let tauri::RunEvent::Opened { urls } = event {
+      let mut paths = Vec::new();
+      for url in urls {
+        if url.scheme() == "file" {
+          if let Ok(path) = url.to_file_path() {
+            if let Some(path_str) = path.to_str() {
+              paths.push(path_str.to_string());
+            }
+          }
+        }
+      }
+      if !paths.is_empty() {
+        // Try to emit directly to frontend (if frontend is already running and listening)
+        let _ = app_handle.emit("open-files", &paths);
+        // Also save to pending files state for startup querying
+        if let Some(state) = app_handle.try_state::<PendingFilesState>() {
+          if let Ok(mut lock) = state.0.lock() {
+            lock.extend(paths);
+          }
+        }
+      }
+    }
+  });
 }

@@ -443,7 +443,23 @@ function initEditor(initialData = null) {
       if (!initialData) {
         setupEventListeners();
         const loaded = await loadFromLocalStorage();
-        if (!loaded) {
+        
+        let pendingLoaded = false;
+        if (window.__TAURI__) {
+          try {
+            const files = await window.__TAURI__.core.invoke('get_pending_files');
+            if (files && files.length > 0) {
+              for (const file of files) {
+                await openSpecificFile(file);
+              }
+              pendingLoaded = true;
+            }
+          } catch (err) {
+            console.error("Failed to load pending files on startup:", err);
+          }
+        }
+
+        if (!loaded && !pendingLoaded) {
           createNewDocument(getTranslation('document.defaultName', 'documento.md'));
         }
       } else {
@@ -1174,6 +1190,17 @@ function setupEventListeners() {
   document.getElementById('btnTableAddCol').addEventListener('click', addColToTable);
   document.getElementById('btnTableDelRow').addEventListener('click', delRowFromTable);
   document.getElementById('btnTableDelCol').addEventListener('click', delColFromTable);
+
+  // Listen to runtime open-files event from Tauri backend
+  if (window.__TAURI__ && window.__TAURI__.event) {
+    window.__TAURI__.event.listen('open-files', (event) => {
+      console.log("Received open-files event:", event.payload);
+      const paths = Array.isArray(event.payload) ? event.payload : [event.payload];
+      for (const path of paths) {
+        openSpecificFile(path);
+      }
+    });
+  }
 }
 
 // 4. SELECTION / FOCUS PANEL STATE SYNC
@@ -1601,10 +1628,19 @@ async function autoSavePhysicalFile(doc) {
     // Run cleanup in background after writing file
     await cleanUpUnusedMediaFolder(doc);
     
+    // Get exact modification time from disk
+    try {
+      const diskTime = await window.__TAURI__.core.invoke('get_file_modified_time', { path: doc.filePath });
+      doc.lastSavedTime = diskTime || Date.now();
+    } catch (e) {
+      doc.lastSavedTime = Date.now();
+    }
+    
     if (doc.isDirty) {
       doc.isDirty = false;
       renderTabs();
     }
+    saveAllToLocalStorage();
   } catch (err) {
     console.warn("Erro no auto-salvamento físico:", err);
   }
@@ -2197,7 +2233,8 @@ function saveAllToLocalStorage() {
     title: d.title,
     blocksData: d.blocksData,
     isDirty: d.isDirty,
-    filePath: d.filePath || null
+    filePath: d.filePath || null,
+    lastSavedTime: d.lastSavedTime || 0
   }));
   localStorage.setItem('sarasara_docs', JSON.stringify(dataToStore));
   localStorage.setItem('sarasara_active_id', activeDocId);
@@ -2215,8 +2252,41 @@ async function loadFromLocalStorage() {
       documents = parsedDocs.map(d => ({
         ...d,
         fileHandle: null,
-        filePath: d.filePath || null
+        filePath: d.filePath || null,
+        lastSavedTime: d.lastSavedTime || 0
       }));
+
+      // Check for newer file versions on disk (conflict prevention)
+      if (window.__TAURI__) {
+        for (let doc of documents) {
+          if (doc.filePath) {
+            try {
+              const diskTime = await window.__TAURI__.core.invoke('get_file_modified_time', { path: doc.filePath });
+              if (diskTime && diskTime > (doc.lastSavedTime || 0)) {
+                console.log(`File ${doc.filePath} is newer on disk (disk: ${diskTime}, cache: ${doc.lastSavedTime || 0}). Reloading...`);
+                const text = await window.__TAURI__.fs.readTextFile(doc.filePath);
+                doc.blocksData = markdownToEditorBlocks(text);
+                doc.lastSavedTime = diskTime;
+                doc.isDirty = false;
+                const separator = doc.filePath.includes('\\') ? '\\' : '/';
+                doc.title = doc.filePath.split(separator).pop();
+              }
+            } catch (err) {
+              console.warn(`Failed to verify or reload physical file on startup: ${doc.filePath}`, err);
+            }
+          }
+        }
+        // Save the updated/synced documents back to localStorage immediately
+        const dataToStore = documents.map(d => ({
+          id: d.id,
+          title: d.title,
+          blocksData: d.blocksData,
+          isDirty: d.isDirty,
+          filePath: d.filePath || null,
+          lastSavedTime: d.lastSavedTime || 0
+        }));
+        localStorage.setItem('sarasara_docs', JSON.stringify(dataToStore));
+      }
 
       activeDocId = storedActiveId;
       const activeDoc = documents.find(d => d.id === activeDocId);
@@ -2265,43 +2335,96 @@ function showNotification(message) {
   }
 }
 
+// Helper to open a specific file path via Tauri
+async function openSpecificFile(filePath) {
+  if (!filePath) return;
+  try {
+    const separator = filePath.includes('\\') ? '\\' : '/';
+    const fileName = filePath.split(separator).pop();
+
+    const alreadyOpen = documents.find(d => d.filePath === filePath);
+    if (alreadyOpen) {
+      switchDocument(alreadyOpen.id);
+      
+      // Check if it needs reloading from disk since we are explicitly opening it
+      try {
+        const diskTime = await window.__TAURI__.core.invoke('get_file_modified_time', { path: filePath });
+        if (diskTime && diskTime > (alreadyOpen.lastSavedTime || 0)) {
+          const text = await window.__TAURI__.fs.readTextFile(filePath);
+          alreadyOpen.blocksData = markdownToEditorBlocks(text);
+          alreadyOpen.lastSavedTime = diskTime;
+          alreadyOpen.isDirty = false;
+          if (activeDocId === alreadyOpen.id) {
+            isRendering = true;
+            await editor.render(sanitizeBlocksData(alreadyOpen.blocksData));
+            isRendering = false;
+          }
+          saveAllToLocalStorage();
+        }
+      } catch (err) {
+        console.warn("Error checking file time on reopen:", err);
+      }
+      return;
+    }
+
+    const text = await window.__TAURI__.fs.readTextFile(filePath);
+    let diskTime = 0;
+    try {
+      diskTime = await window.__TAURI__.core.invoke('get_file_modified_time', { path: filePath });
+    } catch (e) {
+      diskTime = Date.now();
+    }
+    const blocksData = markdownToEditorBlocks(text);
+    const newDoc = {
+      id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      title: fileName,
+      blocksData: blocksData,
+      fileHandle: null,
+      filePath: filePath,
+      isDirty: false,
+      lastSavedTime: diskTime
+    };
+
+    // If there is only one default document that is empty and has no path and is not dirty, we can replace it.
+    if (documents.length === 1 && !documents[0].filePath && !documents[0].isDirty) {
+      const firstDoc = documents[0];
+      const isFirstDocEmpty = !firstDoc.blocksData || !firstDoc.blocksData.blocks || firstDoc.blocksData.blocks.length === 0 || 
+        (firstDoc.blocksData.blocks.length === 1 && firstDoc.blocksData.blocks[0].type === 'paragraph' && !firstDoc.blocksData.blocks[0].data.text);
+      if (isFirstDocEmpty) {
+        documents = [newDoc];
+        switchDocument(newDoc.id);
+        saveAllToLocalStorage();
+        return;
+      }
+    }
+
+    documents.push(newDoc);
+    switchDocument(newDoc.id);
+    saveAllToLocalStorage();
+  } catch (err) {
+    console.error('Erro ao abrir arquivo específico via Tauri:', err);
+    alert(getTranslation('alert.errorOpen', 'Não foi possível abrir o arquivo.'));
+  }
+}
+
 // 13. FILE SYSTEM ACCESS API INTEGRATION
 async function openLocalFile() {
   if (window.__TAURI__) {
     try {
-      const filePath = await window.__TAURI__.dialog.open({
-        multiple: false,
+      const filePaths = await window.__TAURI__.dialog.open({
+        multiple: true,
         filters: [{
           name: 'Arquivos Markdown',
           extensions: ['md', 'markdown', 'txt']
         }]
       });
 
-      if (!filePath) return;
+      if (!filePaths) return;
 
-      const text = await window.__TAURI__.fs.readTextFile(filePath);
-      
-      const pathParts = filePath.split('/');
-      const fileName = pathParts[pathParts.length - 1];
-
-      const alreadyOpen = documents.find(d => d.filePath === filePath);
-      if (alreadyOpen) {
-        switchDocument(alreadyOpen.id);
-        return;
+      const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+      for (const path of paths) {
+        await openSpecificFile(path);
       }
-
-      const blocksData = markdownToEditorBlocks(text);
-      const newDoc = {
-        id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        title: fileName,
-        blocksData: blocksData,
-        fileHandle: null,
-        filePath: filePath,
-        isDirty: false
-      };
-
-      documents.push(newDoc);
-      switchDocument(newDoc.id);
     } catch (err) {
       console.error('Erro ao abrir arquivo físico via Tauri:', err);
       alert(getTranslation('alert.errorOpen', 'Não foi possível abrir o arquivo.'));
@@ -2310,35 +2433,51 @@ async function openLocalFile() {
   }
 
   try {
-    const [handle] = await window.showOpenFilePicker({
+    const handles = await window.showOpenFilePicker({
       types: [{
         description: 'Arquivos Markdown',
         accept: { 'text/markdown': ['.md', '.markdown'], 'text/plain': ['.txt'] }
       }],
-      multiple: false
+      multiple: true
     });
 
-    const file = await handle.getFile();
-    const text = await file.text();
+    for (const handle of handles) {
+      const file = await handle.getFile();
+      const text = await file.text();
 
-    const alreadyOpen = documents.find(d => d.fileHandle && d.fileHandle.name === handle.name);
-    if (alreadyOpen) {
-      switchDocument(alreadyOpen.id);
-      return;
+      const alreadyOpen = documents.find(d => d.fileHandle && d.fileHandle.name === handle.name);
+      if (alreadyOpen) {
+        switchDocument(alreadyOpen.id);
+        continue;
+      }
+
+      const blocksData = markdownToEditorBlocks(text);
+      const newDoc = {
+        id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        title: file.name,
+        blocksData: blocksData,
+        fileHandle: handle,
+        filePath: null,
+        isDirty: false
+      };
+
+      // If there is only one default document that is empty and has no path and is not dirty, we can replace it.
+      if (documents.length === 1 && !documents[0].filePath && !documents[0].fileHandle && !documents[0].isDirty) {
+        const firstDoc = documents[0];
+        const isFirstDocEmpty = !firstDoc.blocksData || !firstDoc.blocksData.blocks || firstDoc.blocksData.blocks.length === 0 || 
+          (firstDoc.blocksData.blocks.length === 1 && firstDoc.blocksData.blocks[0].type === 'paragraph' && !firstDoc.blocksData.blocks[0].data.text);
+        if (isFirstDocEmpty) {
+          documents = [newDoc];
+          switchDocument(newDoc.id);
+          saveAllToLocalStorage();
+          continue;
+        }
+      }
+
+      documents.push(newDoc);
+      switchDocument(newDoc.id);
     }
-
-    const blocksData = markdownToEditorBlocks(text);
-    const newDoc = {
-      id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-      title: file.name,
-      blocksData: blocksData,
-      fileHandle: handle,
-      filePath: null,
-      isDirty: false
-    };
-
-    documents.push(newDoc);
-    switchDocument(newDoc.id);
+    saveAllToLocalStorage();
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Erro ao abrir arquivo físico:', err);
@@ -2355,6 +2494,7 @@ async function saveActiveDocument(forceSaveAs = false) {
   try {
     const blocksData = await editor.save();
     doc.blocksData = blocksData;
+    const markdownText = editorBlocksToMarkdown(doc.blocksData.blocks);
 
     if (window.__TAURI__) {
       let path = doc.filePath;
@@ -2386,11 +2526,18 @@ async function saveActiveDocument(forceSaveAs = false) {
         isRendering = false;
       }
 
-      const markdownText = editorBlocksToMarkdown(doc.blocksData.blocks);
       await window.__TAURI__.fs.writeTextFile(path, markdownText);
       
       // Clean up empty media folders if no images are left
       await cleanUpUnusedMediaFolder(doc);
+
+      // Get exact modification time from disk to avoid clock skew
+      try {
+        const diskTime = await window.__TAURI__.core.invoke('get_file_modified_time', { path: path });
+        doc.lastSavedTime = diskTime || Date.now();
+      } catch (e) {
+        doc.lastSavedTime = Date.now();
+      }
       
       doc.isDirty = false;
       showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
