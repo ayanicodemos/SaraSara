@@ -120,5 +120,9 @@
   "linkModal.title": "Inserir Link",
   "linkModal.instruction": "Insira a URL para o texto selecionado:",
   "linkModal.cancel": "Cancelar",
-  "linkModal.insert": "Inserir"
+  "linkModal.insert": "Inserir",
+  "updateModal.title": "Nova Versão Disponível!",
+  "updateModal.message": "Uma nova versão do SaraSara está disponível. Mantenha seu editor atualizado para ter acesso a novos recursos e correções.",
+  "updateModal.btnDownload": "Baixar Nova Versão",
+  "updateModal.btnLater": "Mais Tarde"
 }

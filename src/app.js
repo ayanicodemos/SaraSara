@@ -312,6 +312,20 @@ window.switchLanguage = switchLanguage; // Expose globally explicitly
 
 function initEditor(initialData = null) {
   const CodeTool = window.CodeTool;
+  const textBlockSanitizeConfig = {
+    b: true,
+    strong: true,
+    i: true,
+    em: true,
+    s: true,
+    del: true,
+    a: {
+      href: true
+    },
+    code: {
+      class: true
+    }
+  };
   
   editor = new EditorJS({
     holder: 'editorjs',
@@ -374,9 +388,15 @@ function initEditor(initialData = null) {
       }
     },
     tools: {
+      paragraph: {
+        class: Paragraph,
+        inlineToolbar: true,
+        sanitize: textBlockSanitizeConfig
+      },
       header: {
         class: Header,
-        inlineToolbar: false,
+        inlineToolbar: true,
+        sanitize: textBlockSanitizeConfig,
         config: {
           placeholder: getTranslation('editor.headerPlaceholder', 'Título...'),
           levels: [1, 2, 3],
@@ -385,7 +405,8 @@ function initEditor(initialData = null) {
       },
       list: {
         class: List,
-        inlineToolbar: false
+        inlineToolbar: true,
+        sanitize: textBlockSanitizeConfig
       },
       code: {
         class: CodeTool,
@@ -395,7 +416,8 @@ function initEditor(initialData = null) {
       },
       quote: {
         class: Quote,
-        inlineToolbar: false,
+        inlineToolbar: true,
+        sanitize: textBlockSanitizeConfig,
         config: {
           quotePlaceholder: getTranslation('editor.quotePlaceholder', 'Citação...'),
           captionPlaceholder: getTranslation('editor.quoteAuthorPlaceholder', 'Autor...')
@@ -403,7 +425,8 @@ function initEditor(initialData = null) {
       },
       table: {
         class: Table,
-        inlineToolbar: false
+        inlineToolbar: true,
+        sanitize: textBlockSanitizeConfig
       },
       inlineCode: {
         class: InlineCode
@@ -562,7 +585,101 @@ function initSetupWizard(detectedLang) {
     
     // Initialize editor
     initEditor();
+    
+    if (window.__TAURI__) {
+      checkAppUpdates();
+    }
   });
+}
+
+const CURRENT_VERSION = '1.1.0';
+
+async function checkAppUpdates() {
+  if (!window.__TAURI__) return; // Only check on desktop app
+  
+  try {
+    const response = await fetch('https://api.github.com/repos/ayanicodemos/SaraSara/releases/latest');
+    if (!response.ok) {
+      console.warn("Failed to fetch latest release from GitHub API:", response.statusText);
+      return;
+    }
+    const data = await response.json();
+    const latestTag = data.tag_name;
+    if (!latestTag) return;
+    
+    // SemVer comparison
+    const cleanLatest = latestTag.replace(/^v/, '');
+    const cleanCurrent = CURRENT_VERSION.replace(/^v/, '');
+    
+    if (isNewerVersion(cleanLatest, cleanCurrent)) {
+      showUpdateModal(latestTag);
+    }
+  } catch (err) {
+    console.error("Error checking for updates:", err);
+  }
+}
+
+function isNewerVersion(latest, current) {
+  const latestParts = latest.split('.').map(Number);
+  const currentParts = current.split('.').map(Number);
+  
+  for (let i = 0; i < 3; i++) {
+    const l = latestParts[i] || 0;
+    const c = currentParts[i] || 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false;
+}
+
+function showUpdateModal(latestTag) {
+  const overlay = document.getElementById('updateModalOverlay');
+  if (!overlay) return;
+  
+  // Style overlay matching current theme
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  if (currentTheme === 'dark') {
+    overlay.classList.add('dark-mode');
+  } else {
+    overlay.classList.remove('dark-mode');
+  }
+  
+  // Apply translations to the elements inside the overlay
+  applyTranslations();
+  
+  // Set version texts
+  const currentTagEl = document.getElementById('updateModalCurrentTag');
+  const latestTagEl = document.getElementById('updateModalLatestTag');
+  if (currentTagEl) currentTagEl.innerText = 'v' + CURRENT_VERSION;
+  if (latestTagEl) latestTagEl.innerText = latestTag;
+  
+  // Setup button event listeners
+  const btnDownload = document.getElementById('btnUpdateDownload');
+  const btnLater = document.getElementById('btnUpdateLater');
+  
+  const close = () => {
+    overlay.classList.add('d-none');
+  };
+  
+  if (btnDownload) {
+    btnDownload.onclick = async () => {
+      close();
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        try {
+          await window.__TAURI__.core.invoke('open_in_browser', { url: 'https://github.com/ayanicodemos/SaraSara/releases/latest' });
+        } catch (err) {
+          console.error("Failed to open browser:", err);
+        }
+      }
+    };
+  }
+  
+  if (btnLater) {
+    btnLater.onclick = close;
+  }
+  
+  // Show the modal
+  overlay.classList.remove('d-none');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -583,6 +700,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     applyTranslations();
     initEditor();
+    
+    if (window.__TAURI__) {
+      checkAppUpdates();
+    }
     
     if (window.__TAURI__ && window.__TAURI__.core) {
       try {
@@ -873,10 +994,11 @@ function setupEventListeners() {
       
       // Check if already in code tag
       const parent = selection.anchorNode.parentElement;
-      if (parent && parent.className === 'inline-code') {
+      const parentCode = parent ? parent.closest('code') : null;
+      if (parentCode) {
         // Unwrap
-        const textNode = document.createTextNode(parent.textContent);
-        parent.parentNode.replaceChild(textNode, parent);
+        const textNode = document.createTextNode(parentCode.textContent);
+        parentCode.parentNode.replaceChild(textNode, parentCode);
       } else {
         // Wrap
         const codeNode = document.createElement('code');
@@ -1668,7 +1790,7 @@ function htmlToMarkdownInline(html) {
   text = text.replace(/<(del|s)[^>]*>([^<]+)<\/\1>/g, '~~$2~~');
 
   // 5. Inline Code <code class="inline-code">text</code> -> `text`
-  text = text.replace(/<code[^>]*>([^<]+)<\/code>/g, '`$2`');
+  text = text.replace(/<code[^>]*>([\s\S]*?)<\/code>/g, '`$1`');
 
   // Convert HTML entities back
   text = text

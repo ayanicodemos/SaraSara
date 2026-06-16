@@ -120,5 +120,9 @@
   "linkModal.title": "リンクの挿入",
   "linkModal.instruction": "選択したテキストのURLを入力してください:",
   "linkModal.cancel": "キャンセル",
-  "linkModal.insert": "挿入"
+  "linkModal.insert": "挿入",
+  "updateModal.title": "新しいバージョンが利用可能です！",
+  "updateModal.message": "SaraSaraの新しいバージョンが利用可能です。新機能やバグ修正を利用するために、エディタを最新の状態に保ってください。",
+  "updateModal.btnDownload": "新しいバージョンをダウンロード",
+  "updateModal.btnLater": "後で"
 }

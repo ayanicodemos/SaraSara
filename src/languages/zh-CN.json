@@ -120,5 +120,9 @@
   "linkModal.title": "插入链接",
   "linkModal.instruction": "输入所选文本的 URL:",
   "linkModal.cancel": "取消",
-  "linkModal.insert": "插入"
+  "linkModal.insert": "插入",
+  "updateModal.title": "新版本可用！",
+  "updateModal.message": "SaraSara 的新版本已发布。请保持编辑器更新以获取新功能和错误修复。",
+  "updateModal.btnDownload": "下载新版本",
+  "updateModal.btnLater": "稍后"
 }

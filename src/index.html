@@ -360,6 +360,7 @@ the Free Software Foundation, either version 3 of the License.
 
   <!-- EDITOR.JS CORE & PLUGINS VIA CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.28.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/paragraph@2.11.3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@1.9.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/code@2.9.0"></script>
@@ -450,6 +451,24 @@ the Free Software Foundation, either version 3 of the License.
       <div class="d-flex justify-content-end gap-2">
         <button id="btnLinkModalCancel" class="btn btn-sm btn-outline-secondary px-3" data-i18n="linkModal.cancel">Cancelar</button>
         <button id="btnLinkModalConfirm" class="btn btn-sm btn-warning px-3" data-i18n="linkModal.insert">Inserir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE MODAL OVERLAY -->
+  <div id="updateModalOverlay" class="setup-wizard-overlay d-none">
+    <div class="setup-wizard-card text-center" style="max-width: 450px; height: auto; padding: 35px 30px;">
+      <div class="mb-3 d-flex justify-content-center align-items-center mx-auto" style="width: 70px; height: 70px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-color);">
+        <span class="material-symbols-outlined" style="font-size: 40px;">system_update</span>
+      </div>
+      <h4 class="mb-2 fw-semibold" data-i18n="updateModal.title">Nova Versão Disponível!</h4>
+      <p class="text-muted fs-7 mb-3" data-i18n="updateModal.message">Uma nova versão do SaraSara está disponível. Mantenha seu editor atualizado para ter acesso a novos recursos e correções.</p>
+      <div id="updateModalVersionInfo" class="small mt-1 mb-4 fw-semibold px-3 py-2" style="background: rgba(128,128,128,0.1); border-radius: 10px; display: inline-block;">
+        <span id="updateModalCurrentTag">v1.1.0</span> &rarr; <span id="updateModalLatestTag" style="color: var(--accent-color);">v1.2.0</span>
+      </div>
+      <div class="d-flex flex-column gap-2">
+        <button id="btnUpdateDownload" class="btn btn-warning py-2 rounded-3 w-100 fw-semibold" style="color: white;" data-i18n="updateModal.btnDownload">Baixar Nova Versão</button>
+        <button id="btnUpdateLater" class="btn btn-link text-decoration-none w-100 fs-7" style="color: var(--text-muted-accent);" data-i18n="updateModal.btnLater">Mais Tarde</button>
       </div>
     </div>
   </div>

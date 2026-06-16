@@ -120,5 +120,9 @@
   "linkModal.title": "Вставить ссылку",
   "linkModal.instruction": "Введите URL-адрес для выбранного текста:",
   "linkModal.cancel": "Отмена",
-  "linkModal.insert": "Вставить"
+  "linkModal.insert": "Вставить",
+  "updateModal.title": "Доступна новая версия!",
+  "updateModal.message": "Доступна новая версия SaraSara. Обновите редактор, чтобы получить доступ к новым функциям и исправлениям.",
+  "updateModal.btnDownload": "Скачать новую версию",
+  "updateModal.btnLater": "Позже"
 }
