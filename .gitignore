@@ -12,3 +12,7 @@ local_tools/
 
 # macOS compiled binaries
 macOS/
+
+# Local workspace memory files
+instrucoes.md
+notas_atualizacao.md
