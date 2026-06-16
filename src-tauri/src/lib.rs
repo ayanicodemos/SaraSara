@@ -60,7 +60,7 @@ fn create_menu(handle: &tauri::AppHandle, lang: &str) -> tauri::Result<Menu<taur
 
   let about_metadata = AboutMetadata {
     name: Some("SaraSara".to_string()),
-    version: Some("1.1.0".to_string()),
+    version: Some("1.2.0".to_string()),
     copyright: Some(copyright.to_string()),
     authors: Some(vec!["Aya Nicodemos".to_string()]),
     website: Some("https://ayasoft.com.br/sarasara".to_string()),
