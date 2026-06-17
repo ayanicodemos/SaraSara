@@ -209,6 +209,7 @@ pub fn run() {
     .expect("error while building tauri application");
 
   app.run(|app_handle, event| {
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     if let tauri::RunEvent::Opened { urls } = event {
       let mut paths = Vec::new();
       for url in urls {
