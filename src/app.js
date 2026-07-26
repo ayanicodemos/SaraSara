@@ -608,7 +608,7 @@ function initSetupWizard(detectedLang) {
   });
 }
 
-const CURRENT_VERSION = '1.2.0';
+const CURRENT_VERSION = '1.3.0';
 
 async function checkAppUpdates() {
   if (!window.__TAURI__) return; // Only check on desktop app
@@ -909,6 +909,7 @@ function setupEventListeners() {
 
   document.getElementById('btnSave').addEventListener('click', () => saveActiveDocument(false));
   document.getElementById('btnSaveAs').addEventListener('click', () => saveActiveDocument(true));
+  document.getElementById('btnExportPDF').addEventListener('click', () => window.print());
   document.getElementById('btnNewTab').addEventListener('click', () => createNewDocument());
 
   // Keyboard Shortcuts: 
@@ -916,6 +917,7 @@ function setupEventListeners() {
   // - Ctrl/Cmd + T or Ctrl/Cmd + N to open a new tab
   // - Ctrl/Cmd + W to close the active tab
   // - Ctrl/Cmd + O to open a file
+  // - Ctrl/Cmd + P to export as PDF
   document.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
     
@@ -950,6 +952,12 @@ function setupEventListeners() {
       if (btnOpen) {
         btnOpen.click();
       }
+    }
+
+    // Export PDF (Cmd+P / Ctrl+P)
+    if ((e.metaKey || e.ctrlKey) && key === 'p') {
+      e.preventDefault();
+      window.print();
     }
   });
 

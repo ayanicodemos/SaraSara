@@ -124,5 +124,7 @@
   "updateModal.title": "Доступна новая версия!",
   "updateModal.message": "Доступна новая версия SaraSara. Обновите редактор, чтобы получить доступ к новым функциям и исправлениям.",
   "updateModal.btnDownload": "Скачать новую версию",
-  "updateModal.btnLater": "Позже"
+  "updateModal.btnLater": "Позже",
+  "toolbar.exportPDF": "PDF",
+  "tooltip.exportPDF": "Экспортировать как PDF"
 }

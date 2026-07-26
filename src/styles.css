@@ -1344,3 +1344,116 @@ a:hover {
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* PRINT / PDF EXPORT STYLING */
+@media print {
+  /* Force clean black-on-white layout */
+  :root, :root[data-theme="dark"], :root[data-theme="light"] {
+    --bg-app: #ffffff !important;
+    --bg-paper: #ffffff !important;
+    --text-main: #000000 !important;
+    --text-muted: #555555 !important;
+    --text-muted-accent: #333333 !important;
+    --border-color: #d1d1d6 !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide app-specific UI elements */
+  .app-toolbar,
+  .app-tab-bar,
+  aside,
+  .btn-exit-focus,
+  .app-toast,
+  .dropdown,
+  .toolbar-divider,
+  #btnCloseOutline,
+  .setup-wizard-overlay,
+  .update-modal-overlay {
+    display: none !important;
+  }
+
+  /* Reset workspace containers */
+  .app-container,
+  .app-workspace,
+  .workspace-center,
+  .editor-canvas-container,
+  .document-page-wrapper {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .document-sheet {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  /* Hide Editor.js UI controls during print */
+  .ce-toolbar,
+  .ce-settings,
+  .ce-conversion-toolbar,
+  .tc-popover,
+  .ce-toolbox {
+    display: none !important;
+  }
+
+  /* Typography formatting for print */
+  .ce-paragraph,
+  .ce-header,
+  .cdx-list__item,
+  .cdx-quote__text,
+  .cdx-quote__caption,
+  .tc-table td,
+  .tc-table th {
+    color: #000000 !important;
+  }
+
+  /* Avoid page breaks inside paragraphs, headers, quotes, tables, and images */
+  .ce-block {
+    page-break-inside: avoid;
+  }
+
+  /* Code block formatting for print */
+  .ce-code {
+    background-color: #f5f5f7 !important;
+    border: 1px solid #d1d1d6 !important;
+    page-break-inside: avoid;
+  }
+
+  .ce-code__textarea {
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+  }
+
+  /* Image block formatting for print */
+  .custom-image-block img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid;
+  }
+
+  .custom-image-placeholder {
+    display: none !important;
+  }
+}
+

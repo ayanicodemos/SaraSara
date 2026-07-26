@@ -124,5 +124,7 @@
   "updateModal.title": "New Version Available!",
   "updateModal.message": "A new version of SaraSara is available. Keep your editor updated for new features and bug fixes.",
   "updateModal.btnDownload": "Download New Version",
-  "updateModal.btnLater": "Later"
+  "updateModal.btnLater": "Later",
+  "toolbar.exportPDF": "PDF",
+  "tooltip.exportPDF": "Export as PDF"
 }

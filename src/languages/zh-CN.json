@@ -124,5 +124,7 @@
   "updateModal.title": "新版本可用！",
   "updateModal.message": "SaraSara 的新版本已发布。请保持编辑器更新以获取新功能和错误修复。",
   "updateModal.btnDownload": "下载新版本",
-  "updateModal.btnLater": "稍后"
+  "updateModal.btnLater": "稍后",
+  "toolbar.exportPDF": "PDF",
+  "tooltip.exportPDF": "导出为 PDF"
 }
