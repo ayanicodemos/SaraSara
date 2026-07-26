@@ -2589,7 +2589,7 @@ function generatePreviewPDF() {
   };
 
   // Render to PDF blob
-  html2pdf().set(opt).from(element).toPdf().output('blob').then(function (blob) {
+  html2pdf().set(opt).from(element).toPdf().outputPdf('blob').then(function (blob) {
     currentPdfBlob = blob;
     currentPreviewBlobUrl = URL.createObjectURL(blob);
     iframe.src = currentPreviewBlobUrl;

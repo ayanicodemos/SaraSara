@@ -1594,3 +1594,29 @@ body.exporting-pdf .ce-toolbox {
   background: #2c2c2e;
 }
 
+.btn-print-confirm {
+  background: var(--accent-color, #ff9500) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-print-confirm:hover {
+  transform: scale(1.02) !important;
+  background: #e08300 !important;
+  color: white !important;
+}
+
+.btn-print-cancel {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-print-cancel:hover {
+  background: var(--bg-button-hover) !important;
+  color: var(--text-main) !important;
+}
+
