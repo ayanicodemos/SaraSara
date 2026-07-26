@@ -1346,12 +1346,13 @@ a:hover {
 
 /* PDF Exporting Styles (simulates print theme on screen for html2pdf) */
 body.exporting-pdf,
-:root[data-theme="dark"] body.exporting-pdf {
+:root[data-theme="dark"] body.exporting-pdf,
+:root[data-theme="light"] body.exporting-pdf {
   --bg-app: #ffffff !important;
   --bg-paper: #ffffff !important;
   --text-main: #000000 !important;
-  --text-muted: #555555 !important;
-  --text-muted-accent: #333333 !important;
+  --text-muted: #000000 !important;
+  --text-muted-accent: #000000 !important;
   --border-color: #d1d1d6 !important;
   background-color: #ffffff !important;
   color: #000000 !important;
@@ -1360,6 +1361,7 @@ body.exporting-pdf,
 body.exporting-pdf #editorjs,
 body.exporting-pdf #editorjs * {
   color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
 }
 
 body.exporting-pdf .document-sheet {

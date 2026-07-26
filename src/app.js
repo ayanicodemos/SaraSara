@@ -2715,6 +2715,9 @@ async function savePDFFromPreview() {
     btnConfirmPrint.disabled = true;
     btnConfirmPrint.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>...`;
 
+    // Apply exporting-pdf class to live body so getComputedStyle returns rgb(0,0,0)
+    document.body.classList.add('exporting-pdf');
+
     const opt = {
       margin:      marginVal,
       filename:    defaultFilename,
@@ -2723,45 +2726,7 @@ async function savePDFFromPreview() {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff',
-        // html2canvas calls onclone with ONE argument: the cloned document.
-        onclone: (clonedDoc) => {
-          // 1. Remove dark-theme so dark-mode overrides stop applying
-          clonedDoc.body.classList.remove('dark-theme');
-
-          // 2. Override the CSS custom properties at the root element.
-          //    This is the ONLY way to guarantee all var(--text-main) etc.
-          //    resolve to black — fighting selector specificity is unreliable.
-          const root = clonedDoc.documentElement;
-          root.style.setProperty('--text-main',         '#000000');
-          root.style.setProperty('--text-muted',        '#333333');
-          root.style.setProperty('--text-muted-accent', '#444444');
-          root.style.setProperty('--bg-main',           '#ffffff');
-          root.style.setProperty('--bg-paper',          '#ffffff');
-          root.style.setProperty('--bg-secondary',      '#ffffff');
-
-          // 3. Inject a print stylesheet for elements that might use
-          //    hardcoded colors or -webkit-text-fill-color
-          const style = clonedDoc.createElement('style');
-          style.textContent = `
-            html, body, #editorjs, #editorjs * {
-              color: #000000 !important;
-              -webkit-text-fill-color: #000000 !important;
-              background-color: transparent !important;
-              text-shadow: none !important;
-              opacity: 1 !important;
-            }
-            body, #editorjs {
-              background: #ffffff !important;
-              background-color: #ffffff !important;
-            }
-            .ce-toolbar, .ce-toolbox, .ce-popover,
-            .ce-inline-toolbar, .ce-settings {
-              display: none !important;
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-        }
+        backgroundColor: '#ffffff'
       },
       jsPDF:       { unit: 'mm', format: formatVal, orientation: orientationVal },
       pagebreak:   { mode: ['css', 'legacy'], avoid: '.ce-block' }
@@ -2784,6 +2749,7 @@ async function savePDFFromPreview() {
     closePrintPreview();
     showNotification(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'), 'error');
   } finally {
+    document.body.classList.remove('exporting-pdf');
     btnConfirmPrint.disabled = false;
     btnConfirmPrint.innerHTML = originalText;
   }
