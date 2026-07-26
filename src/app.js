@@ -2567,38 +2567,42 @@ function generatePreviewPDF() {
   // Use requestAnimationFrame so the loader appears before the heavy DOM work
   requestAnimationFrame(() => {
     try {
-      // --- Off-screen ruler: same paper width, auto height, invisible ---
-      // We use position:fixed so it participates in layout without scrolling.
+      // --- Off-screen ruler for accurate block height measurement ---
+      // NO padding on the ruler itself: we measure clone.getBoundingClientRect() directly.
+      // The ruler width = paper width MINUS margins, so line-wrapping is identical to print.
+      const contentWidthMm = pageWidthMm - 2 * marginVal;
       const ruler = document.createElement('div');
-      ruler.style.cssText = `
-        position: fixed;
-        left: -9999px; top: 0;
-        width: ${pageWidthMm}mm;
-        padding: ${marginVal}mm;
-        box-sizing: border-box;
-        background: #ffffff;
-        color: #000000;
-        visibility: hidden;
-        pointer-events: none;
-        overflow: visible;
-      `;
-      // Inherit editor typography for accurate line-height measurements
+      ruler.style.cssText = [
+        'position: fixed',
+        'left: -9999px',
+        'top: 0',
+        `width: ${contentWidthMm}mm`,
+        'height: auto',
+        'overflow: visible',
+        'visibility: hidden',
+        'pointer-events: none',
+        'background: #ffffff',
+        'color: #000000',
+        'box-sizing: border-box'
+      ].join(';');
+
+      // Inherit editor typography so line-heights match printed output
       const editorStyle = getComputedStyle(element);
       ruler.style.fontFamily = editorStyle.fontFamily;
       ruler.style.fontSize   = editorStyle.fontSize;
       ruler.style.lineHeight = editorStyle.lineHeight;
       document.body.appendChild(ruler);
 
-      // Measure 1mm in real pixels using the ruler's own DPI context
+      // Measure 1mm → px using the ruler's own DPI context
       const probe = document.createElement('div');
-      probe.style.cssText = 'height: 1mm; width: 1px; padding: 0; margin: 0;';
+      probe.style.cssText = 'height:1mm;width:1px;padding:0;margin:0;';
       ruler.appendChild(probe);
-      const pxPerMm   = probe.getBoundingClientRect().height;
+      const pxPerMm  = probe.getBoundingClientRect().height;
       ruler.removeChild(probe);
 
-      const pageHeightPx  = pageHeightMm  * pxPerMm;
-      const marginPx      = marginVal      * pxPerMm;
-      const maxContentPx  = pageHeightPx  - 2 * marginPx;
+      const pageHeightPx = pageHeightMm * pxPerMm;
+      const marginPx     = marginVal    * pxPerMm;
+      const maxContentPx = pageHeightPx - 2 * marginPx;
 
       // --- Clone and measure each block ---
       const sourceBlocks = element.querySelectorAll('.ce-block');
@@ -2610,23 +2614,23 @@ function generatePreviewPDF() {
         return;
       }
 
-      const pages          = [[]];
-      let   accumulated    = 0;
+      const pages       = [[]];
+      let   accumulated = 0;
 
       sourceBlocks.forEach(block => {
         const clone = block.cloneNode(true);
         clone.removeAttribute('id');
         clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-        // Remove editor-only UI widgets from clone
         clone.querySelectorAll('.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar').forEach(el => el.remove());
         if (colorModeVal === 'bw') {
           clone.querySelectorAll('*').forEach(el => el.style.setProperty('color', '#000000', 'important'));
         }
 
-        // Measure block height inside ruler (same paper width = same line wrapping)
+        // Append clone to ruler, measure its actual rendered height
         ruler.innerHTML = '';
         ruler.appendChild(clone);
-        const blockH = ruler.getBoundingClientRect().height;
+        // Use the CLONE's height — ruler has no padding so this is pure content height
+        const blockH = clone.getBoundingClientRect().height;
 
         // Would this block overflow the current page?
         if (accumulated + blockH > maxContentPx && accumulated > 0) {
@@ -2711,15 +2715,30 @@ async function savePDFFromPreview() {
     btnConfirmPrint.disabled = true;
     btnConfirmPrint.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>...`;
 
-    // Force styling temporarily
-    if (colorModeVal === 'bw') {
-      document.body.classList.add('exporting-pdf');
-    }
+    // Build a fully-styled off-screen clone for html2pdf.
+    // This avoids dark-theme CSS variables leaking into the PDF output.
+    const pdfClone = element.cloneNode(true);
+    pdfClone.removeAttribute('id');
+    pdfClone.style.cssText = [
+      'position: fixed',
+      'left: -9999px',
+      'top: 0',
+      `width: ${formatVal === 'a4' ? (orientationVal === 'portrait' ? 210 : 297) : (orientationVal === 'portrait' ? 216 : 279)}mm`,
+      'background: #ffffff',
+      'color: #000000',
+      'box-sizing: border-box',
+      'visibility: hidden'
+    ].join(';');
 
-    const ceToolbar = document.querySelector('.ce-toolbar');
-    const plusBtn = document.querySelector('.ce-toolbox');
-    if (ceToolbar) ceToolbar.style.setProperty('display', 'none', 'important');
-    if (plusBtn) plusBtn.style.setProperty('display', 'none', 'important');
+    // Force all text to black and backgrounds to white
+    pdfClone.querySelectorAll('*').forEach(el => {
+      el.style.setProperty('color', '#000000', 'important');
+      el.style.removeProperty('background-color');
+    });
+    // Remove editor UI elements
+    pdfClone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    pdfClone.querySelectorAll('.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar').forEach(el => el.remove());
+    document.body.appendChild(pdfClone);
 
     const opt = {
       margin:       marginVal,
@@ -2735,28 +2754,25 @@ async function savePDFFromPreview() {
       pagebreak:    { mode: ['css', 'legacy'], avoid: '.ce-block' }
     };
 
-    if (window.__TAURI__) {
-      // Render as blob and write physically
-      const blob = await html2pdf().set(opt).from(element).toPdf().outputPdf('blob');
-      const arrayBuffer = await blob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await window.__TAURI__.fs.writeFile(savePath, uint8Array);
-      showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
-      closePrintPreview();
-    } else {
-      // Browser download
-      await html2pdf().set(opt).from(element).save();
-      closePrintPreview();
+    try {
+      if (window.__TAURI__) {
+        const blob = await html2pdf().set(opt).from(pdfClone).toPdf().outputPdf('blob');
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        await window.__TAURI__.fs.writeFile(savePath, uint8Array);
+        showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
+        closePrintPreview();
+      } else {
+        await html2pdf().set(opt).from(pdfClone).save();
+        closePrintPreview();
+      }
+    } finally {
+      document.body.removeChild(pdfClone);
     }
   } catch (err) {
     console.error('Error saving PDF:', err);
     alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
   } finally {
-    document.body.classList.remove('exporting-pdf');
-    const ceToolbar = document.querySelector('.ce-toolbar');
-    const plusBtn = document.querySelector('.ce-toolbox');
-    if (ceToolbar) ceToolbar.style.removeProperty('display');
-    if (plusBtn) plusBtn.style.removeProperty('display');
     btnConfirmPrint.disabled = false;
     btnConfirmPrint.innerHTML = originalText;
   }
