@@ -2538,60 +2538,125 @@ function setupPrintPreviewListeners() {
 
 let isGeneratingPreview = false;
 
-async function generatePreviewPDF() {
+function generatePreviewPDF() {
   const element = document.getElementById('editorjs');
-  if (!element) return;
+  if (!element || isGeneratingPreview) return;
 
-  const previewSheet = document.getElementById('printPreviewSheet');
-  if (!previewSheet) return;
+  const previewWrapper = document.getElementById('printPreviewWrapper');
+  const loader = document.getElementById('printPreviewLoader');
+  if (!previewWrapper) return;
 
-  // Clear previous preview
-  previewSheet.innerHTML = '';
+  isGeneratingPreview = true;
+  if (loader) loader.classList.remove('d-none');
 
   const marginVal = parseInt(document.getElementById('printMarginSelect').value);
   const orientationVal = document.getElementById('printOrientationSelect').value;
   const formatVal = document.getElementById('printFormatSelect').value;
   const colorModeVal = document.getElementById('printColorModeSelect').value;
 
-  // Apply paper dimensions
-  let widthMm, minHeightMm;
+  // Determine paper dimensions in mm
+  let pageWidthMm, pageHeightMm;
   if (formatVal === 'a4') {
-    widthMm = orientationVal === 'portrait' ? 210 : 297;
-    minHeightMm = orientationVal === 'portrait' ? 297 : 210;
+    pageWidthMm = orientationVal === 'portrait' ? 210 : 297;
+    pageHeightMm = orientationVal === 'portrait' ? 297 : 210;
   } else { // letter
-    widthMm = orientationVal === 'portrait' ? 216 : 279;
-    minHeightMm = orientationVal === 'portrait' ? 279 : 216;
+    pageWidthMm = orientationVal === 'portrait' ? 216 : 279;
+    pageHeightMm = orientationVal === 'portrait' ? 279 : 216;
   }
 
-  previewSheet.style.width = widthMm + 'mm';
-  previewSheet.style.minHeight = minHeightMm + 'mm';
-  previewSheet.style.padding = marginVal + 'mm';
+  const pageAspectRatio = pageHeightMm / pageWidthMm;
 
-  // Clone content
-  const clone = element.cloneNode(true);
-  clone.removeAttribute('id');
-  clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-
-  // Hide toolbars inside clone
-  const ceToolbar = clone.querySelector('.ce-toolbar');
-  const plusBtn = clone.querySelector('.ce-toolbox');
-  if (ceToolbar) ceToolbar.style.display = 'none';
-  if (plusBtn) plusBtn.style.display = 'none';
-
-  // Apply color mode
+  // Apply B&W theme temporarily if requested
   if (colorModeVal === 'bw') {
-    previewSheet.classList.add('exporting-pdf');
-    clone.querySelectorAll('*').forEach(el => {
-      el.style.setProperty('color', '#000000', 'important');
-    });
-  } else {
-    previewSheet.classList.remove('exporting-pdf');
-    clone.querySelectorAll('*').forEach(el => {
-      el.style.removeProperty('color');
-    });
+    document.body.classList.add('exporting-pdf');
   }
 
-  previewSheet.appendChild(clone);
+  // Hide toolbars temporarily
+  const ceToolbar = document.querySelector('.ce-toolbar');
+  const plusBtn = document.querySelector('.ce-toolbox');
+  if (ceToolbar) ceToolbar.style.setProperty('display', 'none', 'important');
+  if (plusBtn) plusBtn.style.setProperty('display', 'none', 'important');
+
+  const opt = {
+    margin:       marginVal,
+    filename:     'preview.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    },
+    jsPDF:        { unit: 'mm', format: formatVal, orientation: orientationVal },
+    pagebreak:    { mode: ['css', 'legacy'], avoid: '.ce-block' }
+  };
+
+  // Run html2pdf worker chain to get canvas
+  html2pdf().set(opt).from(element).toCanvas().get('canvas').then(function(canvas) {
+    // Restore temporary style overrides
+    document.body.classList.remove('exporting-pdf');
+    if (ceToolbar) ceToolbar.style.removeProperty('display');
+    if (plusBtn) plusBtn.style.removeProperty('display');
+
+    if (!canvas) {
+      isGeneratingPreview = false;
+      if (loader) loader.classList.add('d-none');
+      return;
+    }
+
+    // Calculate canvas page height based on paper aspect ratio
+    const scaledPagePxHeight = Math.round(canvas.width * pageAspectRatio);
+    const totalPages = Math.max(1, Math.ceil(canvas.height / scaledPagePxHeight));
+
+    // Clear previous preview images
+    previewWrapper.innerHTML = '';
+
+    // Slice canvas into individual page images
+    for (let i = 0; i < totalPages; i++) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = scaledPagePxHeight;
+
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+      // Draw slice of main canvas
+      const sourceY = i * scaledPagePxHeight;
+      const sourceHeight = Math.min(scaledPagePxHeight, canvas.height - sourceY);
+
+      ctx.drawImage(
+        canvas,
+        0, sourceY, canvas.width, sourceHeight,
+        0, 0, canvas.width, sourceHeight
+      );
+
+      const pageImgDataUrl = pageCanvas.toDataURL('image/png');
+
+      // Create page element wrapper
+      const pageEl = document.createElement('div');
+      pageEl.className = 'print-preview-page';
+      pageEl.style.width = pageWidthMm + 'mm';
+      pageEl.style.height = pageHeightMm + 'mm';
+
+      const img = document.createElement('img');
+      img.src = pageImgDataUrl;
+      img.alt = `Página ${i + 1}`;
+
+      pageEl.appendChild(img);
+      previewWrapper.appendChild(pageEl);
+    }
+
+    isGeneratingPreview = false;
+    if (loader) loader.classList.add('d-none');
+  }).catch(err => {
+    console.error('Error generating canvas preview via html2pdf:', err);
+    document.body.classList.remove('exporting-pdf');
+    if (ceToolbar) ceToolbar.style.removeProperty('display');
+    if (plusBtn) plusBtn.style.removeProperty('display');
+    isGeneratingPreview = false;
+    if (loader) loader.classList.add('d-none');
+  });
 }
 
 async function savePDFFromPreview() {
@@ -2657,7 +2722,7 @@ async function savePDFFromPreview() {
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       await window.__TAURI__.fs.writeFile(savePath, uint8Array);
-      showToast(getTranslation('toast.saved', 'Salvo com sucesso!'));
+      showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
       closePrintPreview();
     } else {
       // Browser download
@@ -2682,8 +2747,8 @@ function closePrintPreview() {
   const modal = document.getElementById('printPreviewModal');
   if (modal) modal.classList.add('d-none');
   
-  const previewSheet = document.getElementById('printPreviewSheet');
-  if (previewSheet) previewSheet.innerHTML = '';
+  const previewWrapper = document.getElementById('printPreviewWrapper');
+  if (previewWrapper) previewWrapper.innerHTML = '';
   
   document.body.classList.remove('exporting-pdf');
 }
