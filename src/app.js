@@ -2536,130 +2536,157 @@ function setupPrintPreviewListeners() {
   btnClosePrintPreview.onclick = closePrintPreview;
 }
 
-function generatePreviewPDF() {
+let isGeneratingPreview = false;
+
+async function generatePreviewPDF() {
   const element = document.getElementById('editorjs');
-  if (!element) return;
+  if (!element || isGeneratingPreview) return;
 
   const previewWrapper = document.getElementById('printPreviewWrapper');
+  const loader = document.getElementById('printPreviewLoader');
   if (!previewWrapper) return;
 
-  // Clear previous preview content
-  previewWrapper.innerHTML = '';
+  isGeneratingPreview = true;
+  if (loader) loader.classList.remove('d-none');
 
-  const marginVal = parseInt(document.getElementById('printMarginSelect').value);
-  const orientationVal = document.getElementById('printOrientationSelect').value;
-  const formatVal = document.getElementById('printFormatSelect').value;
-  const colorModeVal = document.getElementById('printColorModeSelect').value;
+  try {
+    const marginVal = parseInt(document.getElementById('printMarginSelect').value);
+    const orientationVal = document.getElementById('printOrientationSelect').value;
+    const formatVal = document.getElementById('printFormatSelect').value;
+    const colorModeVal = document.getElementById('printColorModeSelect').value;
 
-  // 1. Determine page size in mm
-  let pageWidth, pageHeight;
-  if (formatVal === 'a4') {
-    pageWidth = orientationVal === 'portrait' ? 210 : 297;
-    pageHeight = orientationVal === 'portrait' ? 297 : 210;
-  } else { // letter
-    pageWidth = orientationVal === 'portrait' ? 216 : 279;
-    pageHeight = orientationVal === 'portrait' ? 279 : 216;
-  }
+    // Determine paper dimensions in mm
+    let pageWidthMm, pageHeightMm;
+    if (formatVal === 'a4') {
+      pageWidthMm = orientationVal === 'portrait' ? 210 : 297;
+      pageHeightMm = orientationVal === 'portrait' ? 297 : 210;
+    } else { // letter
+      pageWidthMm = orientationVal === 'portrait' ? 216 : 279;
+      pageHeightMm = orientationVal === 'portrait' ? 279 : 216;
+    }
 
-  // Convert mm to pixels (approx 1mm = 3.7795 px at 96 dpi)
-  const mmToPx = 3.779527559055;
-  const pxHeight = pageHeight * mmToPx;
-  const pxMargin = marginVal * mmToPx;
-  const maxContentHeight = pxHeight - (2 * pxMargin);
+    const pageAspectRatio = pageHeightMm / pageWidthMm;
 
-  // 2. Clone all blocks from editorjs
-  const blocks = element.querySelectorAll('.ce-block');
-  if (blocks.length === 0) return;
+    // Create temporary off-screen container for rendering
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    const containerWidthPx = 800; // Fixed high-res base rendering width
+    container.style.width = containerWidthPx + 'px';
+    
+    // Calculate padding in px based on marginVal / pageWidthMm ratio
+    const marginPx = Math.round(containerWidthPx * (marginVal / pageWidthMm));
+    container.style.padding = marginPx + 'px';
+    container.style.boxSizing = 'border-box';
+    container.style.backgroundColor = '#ffffff';
 
-  // 3. Create a temporary off-screen page to measure heights
-  const measurePage = document.createElement('div');
-  measurePage.className = 'print-preview-page measure-page';
-  measurePage.style.width = pageWidth + 'mm';
-  measurePage.style.height = 'auto';
-  measurePage.style.minHeight = '0px';
-  measurePage.style.maxHeight = 'none';
-  measurePage.style.padding = marginVal + 'mm';
-  measurePage.style.position = 'absolute';
-  measurePage.style.left = '-9999px';
-  measurePage.style.top = '-9999px';
-  measurePage.style.visibility = 'hidden';
-  measurePage.style.boxSizing = 'border-box';
-  
-  if (colorModeVal === 'bw') {
-    measurePage.classList.add('exporting-pdf');
-  }
-  document.body.appendChild(measurePage);
+    // Clone editor content into container
+    const clone = element.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
 
-  // 4. Paginate
-  let currentPage = createPreviewPageElement(pageWidth, pageHeight, marginVal, colorModeVal);
-  previewWrapper.appendChild(currentPage);
-  
-  let contentArea = currentPage.querySelector('.page-content-area');
+    // Apply color mode
+    if (colorModeVal === 'bw') {
+      container.classList.add('exporting-pdf');
+      clone.querySelectorAll('*').forEach(el => el.style.setProperty('color', '#000000', 'important'));
+    }
 
-  blocks.forEach(block => {
-    // Clone block
-    const blockClone = block.cloneNode(true);
-    blockClone.removeAttribute('id');
-    blockClone.querySelectorAll('[contenteditable]').forEach(el => {
-      el.removeAttribute('contenteditable');
+    // Hide Editor.js toolbar controls
+    const ceToolbar = clone.querySelector('.ce-toolbar');
+    const plusBtn = clone.querySelector('.ce-toolbox');
+    if (ceToolbar) ceToolbar.style.display = 'none';
+    if (plusBtn) plusBtn.style.display = 'none';
+
+    container.appendChild(clone);
+    document.body.appendChild(container);
+
+    // Calculate Page Break Spacers so no .ce-block is sliced
+    const pagePxHeight = Math.round(containerWidthPx * pageAspectRatio);
+    const printablePxHeight = pagePxHeight - (2 * marginPx);
+
+    const blocks = container.querySelectorAll('.ce-block');
+
+    blocks.forEach(block => {
+      const blockTop = block.offsetTop;
+      const blockHeight = block.offsetHeight;
+
+      // Determine which page this block's top falls into (0-indexed)
+      const pageIndex = Math.floor(blockTop / printablePxHeight);
+      const pageBottomLimit = (pageIndex + 1) * printablePxHeight;
+
+      // If the block extends past the current page boundary, insert a spacer before it
+      if (blockTop + blockHeight > pageBottomLimit && blockHeight <= printablePxHeight) {
+        const spacerNeeded = pageBottomLimit - blockTop;
+        if (spacerNeeded > 0 && spacerNeeded < printablePxHeight) {
+          const spacer = document.createElement('div');
+          spacer.style.height = spacerNeeded + 'px';
+          spacer.style.width = '100%';
+          spacer.className = 'print-page-break-spacer';
+          block.parentNode.insertBefore(spacer, block);
+        }
+      }
     });
 
-    if (colorModeVal === 'bw') {
-      blockClone.querySelectorAll('*').forEach(el => {
-        el.style.setProperty('color', '#000000', 'important');
-      });
+    // Render container to canvas using html2canvas
+    const canvas = await html2canvas(container, {
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+
+    // Remove temporary container from DOM
+    document.body.removeChild(container);
+
+    // Calculate canvas page height
+    const scaledPagePxHeight = Math.round(canvas.width * pageAspectRatio);
+    const totalPages = Math.max(1, Math.ceil(canvas.height / scaledPagePxHeight));
+
+    // Clear previous preview images
+    previewWrapper.innerHTML = '';
+
+    // Slice canvas into individual page images
+    for (let i = 0; i < totalPages; i++) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = scaledPagePxHeight;
+
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+      // Draw slice of main canvas
+      const sourceY = i * scaledPagePxHeight;
+      const sourceHeight = Math.min(scaledPagePxHeight, canvas.height - sourceY);
+
+      ctx.drawImage(
+        canvas,
+        0, sourceY, canvas.width, sourceHeight,
+        0, 0, canvas.width, sourceHeight
+      );
+
+      const pageImgDataUrl = pageCanvas.toDataURL('image/png');
+
+      // Create page element wrapper
+      const pageEl = document.createElement('div');
+      pageEl.className = 'print-preview-page';
+      pageEl.style.width = pageWidthMm + 'mm';
+      pageEl.style.height = pageHeightMm + 'mm';
+
+      const img = document.createElement('img');
+      img.src = pageImgDataUrl;
+      img.alt = `Página ${i + 1}`;
+
+      pageEl.appendChild(img);
+      previewWrapper.appendChild(pageEl);
     }
-
-    // Append to measure page to calculate new accumulated height
-    measurePage.appendChild(blockClone);
-    
-    // Check height in measurePage
-    const currentContentHeight = measurePage.offsetHeight - (2 * pxMargin);
-
-    if (currentContentHeight > maxContentHeight && contentArea.children.length > 0) {
-      // Remove blockClone from measurePage so measurePage reflects the page break
-      blockClone.remove();
-      
-      // Start a new page
-      currentPage = createPreviewPageElement(pageWidth, pageHeight, marginVal, colorModeVal);
-      previewWrapper.appendChild(currentPage);
-      contentArea = currentPage.querySelector('.page-content-area');
-      
-      // Append blockClone to the new page content area
-      contentArea.appendChild(blockClone);
-      
-      // Reset measurePage for the new page calculation and add blockClone to it
-      measurePage.innerHTML = '';
-      measurePage.appendChild(blockClone);
-    } else {
-      // It fits on the current page! Append it to contentArea
-      contentArea.appendChild(blockClone);
-    }
-  });
-
-  // Clean up measuring page
-  measurePage.remove();
-}
-
-function createPreviewPageElement(width, height, margin, colorMode) {
-  const page = document.createElement('div');
-  page.className = 'print-preview-page';
-  page.style.width = width + 'mm';
-  page.style.height = height + 'mm';
-  page.style.padding = margin + 'mm';
-  
-  if (colorMode === 'bw') {
-    page.classList.add('exporting-pdf');
+  } catch (err) {
+    console.error('Error generating canvas preview:', err);
+  } finally {
+    isGeneratingPreview = false;
+    if (loader) loader.classList.add('d-none');
   }
-
-  // Create content area wrapper that has 100% height minus padding
-  const contentArea = document.createElement('div');
-  contentArea.className = 'page-content-area';
-  contentArea.style.height = '100%';
-  contentArea.style.overflow = 'hidden';
-  page.appendChild(contentArea);
-
-  return page;
 }
 
 async function savePDFFromPreview() {

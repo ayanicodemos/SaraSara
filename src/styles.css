@@ -1575,6 +1575,21 @@ body.exporting-pdf .ce-toolbox {
   overflow: hidden;
 }
 
+.preview-loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(44, 44, 46, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+}
+
 .print-preview-scroll-container {
   width: 100%;
   height: 100%;
@@ -1600,6 +1615,13 @@ body.exporting-pdf .ce-toolbox {
   position: relative;
   flex-shrink: 0;
   overflow: hidden;
+}
+
+.print-preview-page img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 /* Ensure inside the print preview page all text follows forced styling (like print) */
