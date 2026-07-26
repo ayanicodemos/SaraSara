@@ -1624,6 +1624,24 @@ body.exporting-pdf .ce-toolbox {
   object-fit: contain;
 }
 
+/* Force all text inside preview pages to be black (print-like) */
+.print-preview-page,
+.print-preview-page * {
+  color: #000000 !important;
+}
+
+.print-preview-page-number {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 10px;
+  color: #aaaaaa !important;
+  font-family: sans-serif;
+  pointer-events: none;
+  opacity: 0.7;
+  z-index: 2;
+}
+
 .btn-print-confirm {
   background: var(--accent-color, #ff9500) !important;
   border: none !important;

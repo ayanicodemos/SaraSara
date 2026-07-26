@@ -2564,98 +2564,117 @@ function generatePreviewPDF() {
     pageHeightMm = orientationVal === 'portrait' ? 279 : 216;
   }
 
-  const pageAspectRatio = pageHeightMm / pageWidthMm;
+  // Use requestAnimationFrame so the loader appears before the heavy DOM work
+  requestAnimationFrame(() => {
+    try {
+      // --- Off-screen ruler: same paper width, auto height, invisible ---
+      // We use position:fixed so it participates in layout without scrolling.
+      const ruler = document.createElement('div');
+      ruler.style.cssText = `
+        position: fixed;
+        left: -9999px; top: 0;
+        width: ${pageWidthMm}mm;
+        padding: ${marginVal}mm;
+        box-sizing: border-box;
+        background: #ffffff;
+        color: #000000;
+        visibility: hidden;
+        pointer-events: none;
+        overflow: visible;
+      `;
+      // Inherit editor typography for accurate line-height measurements
+      const editorStyle = getComputedStyle(element);
+      ruler.style.fontFamily = editorStyle.fontFamily;
+      ruler.style.fontSize   = editorStyle.fontSize;
+      ruler.style.lineHeight = editorStyle.lineHeight;
+      document.body.appendChild(ruler);
 
-  // Apply B&W theme temporarily if requested
-  if (colorModeVal === 'bw') {
-    document.body.classList.add('exporting-pdf');
-  }
+      // Measure 1mm in real pixels using the ruler's own DPI context
+      const probe = document.createElement('div');
+      probe.style.cssText = 'height: 1mm; width: 1px; padding: 0; margin: 0;';
+      ruler.appendChild(probe);
+      const pxPerMm   = probe.getBoundingClientRect().height;
+      ruler.removeChild(probe);
 
-  // Hide toolbars temporarily
-  const ceToolbar = document.querySelector('.ce-toolbar');
-  const plusBtn = document.querySelector('.ce-toolbox');
-  if (ceToolbar) ceToolbar.style.setProperty('display', 'none', 'important');
-  if (plusBtn) plusBtn.style.setProperty('display', 'none', 'important');
+      const pageHeightPx  = pageHeightMm  * pxPerMm;
+      const marginPx      = marginVal      * pxPerMm;
+      const maxContentPx  = pageHeightPx  - 2 * marginPx;
 
-  const opt = {
-    margin:       marginVal,
-    filename:     'preview.pdf',
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { 
-      scale: 1.5,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    },
-    jsPDF:        { unit: 'mm', format: formatVal, orientation: orientationVal },
-    pagebreak:    { mode: ['css', 'legacy'], avoid: '.ce-block' }
-  };
+      // --- Clone and measure each block ---
+      const sourceBlocks = element.querySelectorAll('.ce-block');
+      if (sourceBlocks.length === 0) {
+        document.body.removeChild(ruler);
+        previewWrapper.innerHTML = '';
+        isGeneratingPreview = false;
+        if (loader) loader.classList.add('d-none');
+        return;
+      }
 
-  // Run html2pdf worker chain to get canvas
-  html2pdf().set(opt).from(element).toCanvas().get('canvas').then(function(canvas) {
-    // Restore temporary style overrides
-    document.body.classList.remove('exporting-pdf');
-    if (ceToolbar) ceToolbar.style.removeProperty('display');
-    if (plusBtn) plusBtn.style.removeProperty('display');
+      const pages          = [[]];
+      let   accumulated    = 0;
 
-    if (!canvas) {
+      sourceBlocks.forEach(block => {
+        const clone = block.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+        // Remove editor-only UI widgets from clone
+        clone.querySelectorAll('.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar').forEach(el => el.remove());
+        if (colorModeVal === 'bw') {
+          clone.querySelectorAll('*').forEach(el => el.style.setProperty('color', '#000000', 'important'));
+        }
+
+        // Measure block height inside ruler (same paper width = same line wrapping)
+        ruler.innerHTML = '';
+        ruler.appendChild(clone);
+        const blockH = ruler.getBoundingClientRect().height;
+
+        // Would this block overflow the current page?
+        if (accumulated + blockH > maxContentPx && accumulated > 0) {
+          pages.push([]);
+          accumulated = 0;
+        }
+
+        pages[pages.length - 1].push(clone.cloneNode(true));
+        accumulated += blockH;
+      });
+
+      document.body.removeChild(ruler);
+
+      // --- Build preview page elements ---
+      previewWrapper.innerHTML = '';
+
+      pages.forEach((pageBlocks, idx) => {
+        const pageEl = document.createElement('div');
+        pageEl.className = 'print-preview-page';
+        pageEl.style.width      = pageWidthMm  + 'mm';
+        pageEl.style.height     = pageHeightMm + 'mm';
+        pageEl.style.padding    = marginVal    + 'mm';
+        pageEl.style.boxSizing  = 'border-box';
+        pageEl.style.overflow   = 'hidden';
+        pageEl.style.position   = 'relative';
+        pageEl.style.background = '#ffffff';
+
+        // Subtle page number badge
+        const badge = document.createElement('div');
+        badge.className = 'print-preview-page-number';
+        badge.textContent = `${idx + 1} / ${pages.length}`;
+        pageEl.appendChild(badge);
+
+        // Content wrapper
+        const content = document.createElement('div');
+        content.style.overflow = 'hidden';
+        pageBlocks.forEach(b => content.appendChild(b));
+        pageEl.appendChild(content);
+
+        previewWrapper.appendChild(pageEl);
+      });
+
+    } catch (err) {
+      console.error('Error generating print preview:', err);
+    } finally {
       isGeneratingPreview = false;
       if (loader) loader.classList.add('d-none');
-      return;
     }
-
-    // Calculate canvas page height based on paper aspect ratio
-    const scaledPagePxHeight = Math.round(canvas.width * pageAspectRatio);
-    const totalPages = Math.max(1, Math.ceil(canvas.height / scaledPagePxHeight));
-
-    // Clear previous preview images
-    previewWrapper.innerHTML = '';
-
-    // Slice canvas into individual page images
-    for (let i = 0; i < totalPages; i++) {
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = scaledPagePxHeight;
-
-      const ctx = pageCanvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-
-      // Draw slice of main canvas
-      const sourceY = i * scaledPagePxHeight;
-      const sourceHeight = Math.min(scaledPagePxHeight, canvas.height - sourceY);
-
-      ctx.drawImage(
-        canvas,
-        0, sourceY, canvas.width, sourceHeight,
-        0, 0, canvas.width, sourceHeight
-      );
-
-      const pageImgDataUrl = pageCanvas.toDataURL('image/png');
-
-      // Create page element wrapper
-      const pageEl = document.createElement('div');
-      pageEl.className = 'print-preview-page';
-      pageEl.style.width = pageWidthMm + 'mm';
-      pageEl.style.height = pageHeightMm + 'mm';
-
-      const img = document.createElement('img');
-      img.src = pageImgDataUrl;
-      img.alt = `Página ${i + 1}`;
-
-      pageEl.appendChild(img);
-      previewWrapper.appendChild(pageEl);
-    }
-
-    isGeneratingPreview = false;
-    if (loader) loader.classList.add('d-none');
-  }).catch(err => {
-    console.error('Error generating canvas preview via html2pdf:', err);
-    document.body.classList.remove('exporting-pdf');
-    if (ceToolbar) ceToolbar.style.removeProperty('display');
-    if (plusBtn) plusBtn.style.removeProperty('display');
-    isGeneratingPreview = false;
-    if (loader) loader.classList.add('d-none');
   });
 }
 
