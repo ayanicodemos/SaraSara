@@ -2746,8 +2746,7 @@ async function savePDFFromPreview() {
       pagebreak:   { mode: ['css', 'legacy'], avoid: '.ce-block' }
     };
 
-    try {
-      if (window.__TAURI__) {
+    if (window.__TAURI__) {
         const blob = await html2pdf().set(opt).from(element).toPdf().outputPdf('blob');
         const arrayBuffer = await blob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
