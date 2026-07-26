@@ -2540,54 +2540,120 @@ function generatePreviewPDF() {
   const element = document.getElementById('editorjs');
   if (!element) return;
 
-  const previewContent = document.getElementById('printPreviewContent');
-  if (!previewContent) return;
+  const previewWrapper = document.getElementById('printPreviewWrapper');
+  if (!previewWrapper) return;
 
-  // Clone the editor contents
-  previewContent.innerHTML = '';
-  const clone = element.cloneNode(true);
-  
-  // Remove contenteditable and other active attributes to make it a static preview
-  clone.removeAttribute('id');
-  clone.querySelectorAll('[contenteditable]').forEach(el => {
-    el.removeAttribute('contenteditable');
-  });
-  
-  previewContent.appendChild(clone);
+  // Clear previous preview content
+  previewWrapper.innerHTML = '';
 
   const marginVal = parseInt(document.getElementById('printMarginSelect').value);
   const orientationVal = document.getElementById('printOrientationSelect').value;
   const formatVal = document.getElementById('printFormatSelect').value;
   const colorModeVal = document.getElementById('printColorModeSelect').value;
 
-  // Apply Margins
-  previewContent.style.padding = marginVal + 'mm';
-
-  // Apply Format & Orientation
-  let width, minHeight;
+  // 1. Determine page size in mm
+  let pageWidth, pageHeight;
   if (formatVal === 'a4') {
-    width = orientationVal === 'portrait' ? '210mm' : '297mm';
-    minHeight = orientationVal === 'portrait' ? '297mm' : '210mm';
+    pageWidth = orientationVal === 'portrait' ? 210 : 297;
+    pageHeight = orientationVal === 'portrait' ? 297 : 210;
   } else { // letter
-    width = orientationVal === 'portrait' ? '216mm' : '279mm';
-    minHeight = orientationVal === 'portrait' ? '279mm' : '216mm';
+    pageWidth = orientationVal === 'portrait' ? 216 : 279;
+    pageHeight = orientationVal === 'portrait' ? 279 : 216;
   }
-  previewContent.style.width = width;
-  previewContent.style.minHeight = minHeight;
 
-  // Apply Color Mode
+  // Convert mm to pixels (approx 1mm = 3.7795 px at 96 dpi)
+  const mmToPx = 3.779527559055;
+  const pxHeight = pageHeight * mmToPx;
+  const pxMargin = marginVal * mmToPx;
+  const maxContentHeight = pxHeight - (2 * pxMargin);
+
+  // 2. Clone all blocks from editorjs
+  const blocks = element.querySelectorAll('.ce-block');
+  if (blocks.length === 0) return;
+
+  // 3. Create a temporary off-screen page to measure heights
+  const measurePage = document.createElement('div');
+  measurePage.className = 'print-preview-page measure-page';
+  measurePage.style.width = pageWidth + 'mm';
+  measurePage.style.minHeight = pageHeight + 'mm';
+  measurePage.style.padding = marginVal + 'mm';
+  measurePage.style.position = 'absolute';
+  measurePage.style.left = '-9999px';
+  measurePage.style.top = '-9999px';
+  measurePage.style.visibility = 'hidden';
+  
   if (colorModeVal === 'bw') {
-    previewContent.classList.add('exporting-pdf');
-    // Force black text color on all children
-    previewContent.querySelectorAll('*').forEach(el => {
-      el.style.setProperty('color', '#000000', 'important');
-    });
-  } else {
-    previewContent.classList.remove('exporting-pdf');
-    previewContent.querySelectorAll('*').forEach(el => {
-      el.style.removeProperty('color');
-    });
+    measurePage.classList.add('exporting-pdf');
   }
+  document.body.appendChild(measurePage);
+
+  // 4. Paginate
+  let currentPage = createPreviewPageElement(pageWidth, pageHeight, marginVal, colorModeVal);
+  previewWrapper.appendChild(currentPage);
+  
+  let contentArea = currentPage.querySelector('.page-content-area');
+
+  blocks.forEach(block => {
+    // Clone block
+    const blockClone = block.cloneNode(true);
+    blockClone.removeAttribute('id');
+    blockClone.querySelectorAll('[contenteditable]').forEach(el => {
+      el.removeAttribute('contenteditable');
+    });
+
+    if (colorModeVal === 'bw') {
+      blockClone.querySelectorAll('*').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+      });
+    }
+
+    // Append to measure page to see if it fits
+    measurePage.appendChild(blockClone);
+    
+    // Check height in measurePage
+    const totalHeight = measurePage.scrollHeight - (2 * pxMargin);
+
+    if (totalHeight > maxContentHeight && contentArea.children.length > 0) {
+      // It doesn't fit on the current page! Start a new page
+      currentPage = createPreviewPageElement(pageWidth, pageHeight, marginVal, colorModeVal);
+      previewWrapper.appendChild(currentPage);
+      contentArea = currentPage.querySelector('.page-content-area');
+      
+      // Move this block to the new page content area
+      contentArea.appendChild(blockClone);
+      
+      // Reset measurePage for the new page calculation
+      measurePage.innerHTML = '';
+      measurePage.appendChild(blockClone);
+    } else {
+      // It fits on the current page! Append it
+      contentArea.appendChild(blockClone);
+    }
+  });
+
+  // Clean up measuring page
+  measurePage.remove();
+}
+
+function createPreviewPageElement(width, height, margin, colorMode) {
+  const page = document.createElement('div');
+  page.className = 'print-preview-page';
+  page.style.width = width + 'mm';
+  page.style.height = height + 'mm';
+  page.style.padding = margin + 'mm';
+  
+  if (colorMode === 'bw') {
+    page.classList.add('exporting-pdf');
+  }
+
+  // Create content area wrapper that has 100% height minus padding
+  const contentArea = document.createElement('div');
+  contentArea.className = 'page-content-area';
+  contentArea.style.height = '100%';
+  contentArea.style.overflow = 'hidden';
+  page.appendChild(contentArea);
+
+  return page;
 }
 
 async function savePDFFromPreview() {
@@ -2682,8 +2748,8 @@ function closePrintPreview() {
   const modal = document.getElementById('printPreviewModal');
   if (modal) modal.classList.add('d-none');
   
-  const previewContent = document.getElementById('printPreviewContent');
-  if (previewContent) previewContent.innerHTML = '';
+  const previewWrapper = document.getElementById('printPreviewWrapper');
+  if (previewWrapper) previewWrapper.innerHTML = '';
   
   document.body.classList.remove('exporting-pdf');
 }
