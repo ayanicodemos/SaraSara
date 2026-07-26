@@ -2726,25 +2726,34 @@ async function savePDFFromPreview() {
         backgroundColor: '#ffffff',
         // html2canvas calls onclone with ONE argument: the cloned document.
         onclone: (clonedDoc) => {
-          // Remove dark-theme so all dark-mode CSS rules stop applying
+          // 1. Remove dark-theme so dark-mode overrides stop applying
           clonedDoc.body.classList.remove('dark-theme');
-          clonedDoc.body.classList.add('light-theme');
 
-          // Inject a print stylesheet that forces black text on white background.
-          // We use -webkit-text-fill-color because WKWebView uses that for
-          // actual text paint — overriding only `color` is not enough.
+          // 2. Override the CSS custom properties at the root element.
+          //    This is the ONLY way to guarantee all var(--text-main) etc.
+          //    resolve to black — fighting selector specificity is unreliable.
+          const root = clonedDoc.documentElement;
+          root.style.setProperty('--text-main',         '#000000');
+          root.style.setProperty('--text-muted',        '#333333');
+          root.style.setProperty('--text-muted-accent', '#444444');
+          root.style.setProperty('--bg-main',           '#ffffff');
+          root.style.setProperty('--bg-paper',          '#ffffff');
+          root.style.setProperty('--bg-secondary',      '#ffffff');
+
+          // 3. Inject a print stylesheet for elements that might use
+          //    hardcoded colors or -webkit-text-fill-color
           const style = clonedDoc.createElement('style');
           style.textContent = `
-            body, body * {
+            html, body, #editorjs, #editorjs * {
               color: #000000 !important;
               -webkit-text-fill-color: #000000 !important;
               background-color: transparent !important;
               text-shadow: none !important;
-              box-shadow: none !important;
               opacity: 1 !important;
             }
-            #editorjs {
+            body, #editorjs {
               background: #ffffff !important;
+              background-color: #ffffff !important;
             }
             .ce-toolbar, .ce-toolbox, .ce-popover,
             .ce-inline-toolbar, .ce-settings {
