@@ -2570,36 +2570,79 @@ function updateLivePrintLayout() {
   const sourceBlocks = element.querySelectorAll('.ce-block');
   if (sourceBlocks.length === 0) return;
 
+  // Exact A4 dimensions & default 20mm margin (matching default print settings)
+  const pageWidthMm = 210;
+  const pageHeightMm = 297;
+  const marginVal = 20;
+  const contentWidthMm = pageWidthMm - 2 * marginVal; // 170mm
+
+  // Create identical off-screen ruler as generatePreviewPDF
+  const ruler = document.createElement('div');
+  ruler.style.cssText = [
+    'position: fixed',
+    'left: -9999px',
+    'top: 0',
+    `width: ${contentWidthMm}mm`,
+    'height: auto',
+    'overflow: visible',
+    'visibility: hidden',
+    'pointer-events: none',
+    'box-sizing: border-box'
+  ].join(';');
+
+  const editorStyle = getComputedStyle(element);
+  ruler.style.fontFamily = editorStyle.fontFamily;
+  ruler.style.fontSize   = editorStyle.fontSize;
+  ruler.style.lineHeight = editorStyle.lineHeight;
+  document.body.appendChild(ruler);
+
   const probe = document.createElement('div');
-  probe.style.cssText = 'height: 1mm; width: 1px; position: fixed; left: -9999px; top: 0;';
-  document.body.appendChild(probe);
+  probe.style.cssText = 'height:1mm;width:1px;padding:0;margin:0;';
+  ruler.appendChild(probe);
   const pxPerMm = probe.getBoundingClientRect().height;
-  document.body.removeChild(probe);
+  ruler.removeChild(probe);
 
-  // A4 content height: 297mm - 40mm margins = 257mm
-  const maxContentPx = 257 * pxPerMm;
+  const pageHeightPx = pageHeightMm * pxPerMm;
+  const marginPx     = marginVal    * pxPerMm;
+  const maxContentPx = pageHeightPx - 2 * marginPx;
 
+  // Identify page break insertion points
+  const breakBlocks = [];
   let accumulated = 0;
   let pageIndex = 1;
 
   sourceBlocks.forEach(block => {
-    const blockH = block.getBoundingClientRect().height;
+    const clone = block.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar').forEach(el => el.remove());
+
+    ruler.innerHTML = '';
+    ruler.appendChild(clone);
+    const blockH = clone.getBoundingClientRect().height;
 
     if (accumulated + blockH > maxContentPx && accumulated > 0) {
       pageIndex++;
-      const gap = document.createElement('div');
-      gap.className = 'print-page-break-gap';
-
-      const badge = document.createElement('div');
-      badge.className = 'print-page-break-badge';
-      badge.textContent = `Página ${pageIndex}`;
-      gap.appendChild(badge);
-
-      block.parentNode.insertBefore(gap, block);
+      breakBlocks.push({ block, pageIndex });
       accumulated = 0;
     }
 
     accumulated += blockH;
+  });
+
+  document.body.removeChild(ruler);
+
+  // Insert page break gap spacers before target blocks
+  breakBlocks.forEach(({ block, pageIndex }) => {
+    const gap = document.createElement('div');
+    gap.className = 'print-page-break-gap';
+
+    const badge = document.createElement('div');
+    badge.className = 'print-page-break-badge';
+    badge.textContent = `Página ${pageIndex}`;
+    gap.appendChild(badge);
+
+    block.parentNode.insertBefore(gap, block);
   });
 }
 
