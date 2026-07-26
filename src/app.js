@@ -2724,19 +2724,20 @@ async function savePDFFromPreview() {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        // onclone is called by html2canvas with its own internal DOM clone
-        // before rendering — the perfect place to enforce print styles
-        // without touching the live document.
-        onclone: (_clonedDoc, clonedEl) => {
-          // White background, black text on the root element
+        // html2canvas calls onclone with ONE argument: the cloned document.
+        // We find our element by id within that clone.
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.getElementById('editorjs');
+          if (!clonedEl) return;
+          // White background + black text on root element
           clonedEl.style.setProperty('background', '#ffffff', 'important');
           clonedEl.style.setProperty('color',      '#000000', 'important');
-          // Force every descendant to black text, transparent background
+          // Force every descendant: black text, transparent background
           clonedEl.querySelectorAll('*').forEach(el => {
-            el.style.setProperty('color', '#000000', 'important');
+            el.style.setProperty('color',            '#000000',     'important');
             el.style.setProperty('background-color', 'transparent', 'important');
           });
-          // Hide editor-only chrome
+          // Hide editor-only chrome that must not appear in the PDF
           clonedEl.querySelectorAll(
             '.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar, .ce-settings'
           ).forEach(el => el.style.setProperty('display', 'none', 'important'));
@@ -2759,7 +2760,9 @@ async function savePDFFromPreview() {
       }
   } catch (err) {
     console.error('Error saving PDF:', err);
-    alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
+    // Close the modal so it doesn't block the UI after an error
+    closePrintPreview();
+    showNotification(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'), 'error');
   } finally {
     btnConfirmPrint.disabled = false;
     btnConfirmPrint.innerHTML = originalText;
