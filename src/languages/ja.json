@@ -126,5 +126,21 @@
   "updateModal.btnDownload": "新しいバージョンをダウンロード",
   "updateModal.btnLater": "後で",
   "toolbar.exportPDF": "PDF",
-  "tooltip.exportPDF": "PDFとして書き出す"
+  "tooltip.exportPDF": "PDFとして書き出す",
+  "print.previewTitle": "印刷プレビュー",
+  "print.margin": "余白",
+  "print.marginStandard": "標準 (20mm)",
+  "print.marginNarrow": "狭い (10mm)",
+  "print.marginWide": "広い (30mm)",
+  "print.marginNone": "余白なし",
+  "print.orientation": "方向",
+  "print.portrait": "縦方向",
+  "print.landscape": "横方向",
+  "print.format": "用紙サイズ",
+  "print.colorMode": "カラーモード",
+  "print.colorBW": "白黒",
+  "print.colorOriginal": "オリジナルカラー",
+  "print.savePDF": "PDFを保存",
+  "print.close": "閉じる",
+  "print.generating": "プレビューを生成中..."
 }

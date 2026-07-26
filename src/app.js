@@ -2494,47 +2494,168 @@ async function openLocalFile() {
   }
 }
 
+let currentPreviewBlobUrl = null;
+let currentPdfBlob = null;
+
 function exportToPDF() {
+  const modal = document.getElementById('printPreviewModal');
+  if (!modal) return;
+  modal.classList.remove('d-none');
+  
+  // Localize modal elements
+  applyTranslations();
+  
+  // Setup default values if they are reset
+  document.getElementById('printMarginSelect').value = "20";
+  document.getElementById('printOrientationSelect').value = "portrait";
+  document.getElementById('printFormatSelect').value = "a4";
+  document.getElementById('printColorModeSelect').value = "bw";
+
+  // Setup listeners for select dropdowns
+  setupPrintPreviewListeners();
+  
+  // Generate first preview
+  generatePreviewPDF();
+}
+
+function setupPrintPreviewListeners() {
+  const marginSelect = document.getElementById('printMarginSelect');
+  const orientationSelect = document.getElementById('printOrientationSelect');
+  const formatSelect = document.getElementById('printFormatSelect');
+  const colorModeSelect = document.getElementById('printColorModeSelect');
+  
+  marginSelect.onchange = generatePreviewPDF;
+  orientationSelect.onchange = generatePreviewPDF;
+  formatSelect.onchange = generatePreviewPDF;
+  colorModeSelect.onchange = generatePreviewPDF;
+  
+  const btnConfirmPrint = document.getElementById('btnConfirmPrint');
+  const btnClosePrintPreview = document.getElementById('btnClosePrintPreview');
+  
+  btnConfirmPrint.onclick = savePDFFromPreview;
+  btnClosePrintPreview.onclick = closePrintPreview;
+}
+
+function generatePreviewPDF() {
   const element = document.getElementById('editorjs');
   if (!element) return;
 
-  const doc = documents.find(d => d.id === activeDocId);
-  const rawTitle = doc ? doc.title : 'documento.md';
-  const filename = rawTitle.replace(/\.md$/, '').replace(/\.markdown$/, '') + '.pdf';
+  const iframe = document.getElementById('printPreviewIframe');
+  const loader = document.getElementById('printPreviewLoader');
+  
+  iframe.classList.add('d-none');
+  loader.classList.remove('d-none');
 
-  // Apply printing style temporarily
-  document.body.classList.add('exporting-pdf');
+  const marginVal = parseInt(document.getElementById('printMarginSelect').value);
+  const orientationVal = document.getElementById('printOrientationSelect').value;
+  const formatVal = document.getElementById('printFormatSelect').value;
+  const colorModeVal = document.getElementById('printColorModeSelect').value;
 
-  // Hide Editor.js toolbar temporarily
+  // Revoke old blob URL to prevent memory leaks
+  if (currentPreviewBlobUrl) {
+    URL.revokeObjectURL(currentPreviewBlobUrl);
+    currentPreviewBlobUrl = null;
+  }
+
+  // Force black-on-white variables if Black & White mode is requested
+  if (colorModeVal === 'bw') {
+    document.body.classList.add('exporting-pdf');
+  } else {
+    document.body.classList.remove('exporting-pdf');
+  }
+
+  // Hide Editor.js toolbar elements to avoid them rendering in the PDF canvas
   const ceToolbar = document.querySelector('.ce-toolbar');
   const plusBtn = document.querySelector('.ce-toolbox');
   if (ceToolbar) ceToolbar.style.setProperty('display', 'none', 'important');
   if (plusBtn) plusBtn.style.setProperty('display', 'none', 'important');
 
+  const doc = documents.find(d => d.id === activeDocId);
+  const rawTitle = doc ? doc.title : 'documento.md';
+  const filename = rawTitle.replace(/\.md$/, '').replace(/\.markdown$/, '') + '.pdf';
+
   const opt = {
-    margin:       [20, 20, 20, 20], // 20mm standard Margins
+    margin:       marginVal,
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
-      scale: 2, 
+      scale: 1.5, // optimal scale for speed vs quality in preview
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff'
     },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    jsPDF:        { unit: 'mm', format: formatVal, orientation: orientationVal },
+    pagebreak:    { mode: ['css', 'legacy'], avoid: '.ce-block' }
   };
 
-  // Run html2pdf
-  html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
+  // Render to PDF blob
+  html2pdf().set(opt).from(element).toPdf().output('blob').then(function (blob) {
+    currentPdfBlob = blob;
+    currentPreviewBlobUrl = URL.createObjectURL(blob);
+    iframe.src = currentPreviewBlobUrl;
+    
+    iframe.classList.remove('d-none');
+    loader.classList.add('d-none');
+
+    // Restore classes and visibility
     document.body.classList.remove('exporting-pdf');
     if (ceToolbar) ceToolbar.style.removeProperty('display');
     if (plusBtn) plusBtn.style.removeProperty('display');
-  }).save().catch(err => {
-    console.error('Error generating PDF:', err);
+  }).catch(err => {
+    console.error('Error generating PDF preview:', err);
+    loader.classList.add('d-none');
     document.body.classList.remove('exporting-pdf');
     if (ceToolbar) ceToolbar.style.removeProperty('display');
     if (plusBtn) plusBtn.style.removeProperty('display');
   });
+}
+
+async function savePDFFromPreview() {
+  if (!currentPdfBlob) return;
+
+  const doc = documents.find(d => d.id === activeDocId);
+  const rawTitle = doc ? doc.title : 'documento.md';
+  const defaultFilename = rawTitle.replace(/\.md$/, '').replace(/\.markdown$/, '') + '.pdf';
+
+  if (window.__TAURI__) {
+    try {
+      const savePath = await window.__TAURI__.dialog.save({
+        filters: [{
+          name: 'PDF Document',
+          extensions: ['pdf']
+        }],
+        defaultPath: defaultFilename
+      });
+
+      if (savePath) {
+        const arrayBuffer = await currentPdfBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        await window.__TAURI__.fs.writeFile(savePath, uint8Array);
+        showToast(getTranslation('toast.saved', 'Salvo com sucesso!'));
+      }
+    } catch (err) {
+      console.error('Error saving PDF via Tauri:', err);
+      alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
+    }
+  } else {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(currentPdfBlob);
+    link.download = defaultFilename;
+    link.click();
+  }
+}
+
+function closePrintPreview() {
+  const modal = document.getElementById('printPreviewModal');
+  if (modal) modal.classList.add('d-none');
+
+  if (currentPreviewBlobUrl) {
+    URL.revokeObjectURL(currentPreviewBlobUrl);
+    currentPreviewBlobUrl = null;
+  }
+  currentPdfBlob = null;
+  document.body.classList.remove('exporting-pdf');
 }
 
 async function saveActiveDocument(forceSaveAs = false) {

@@ -126,5 +126,21 @@
   "updateModal.btnDownload": "새 버전 다운로드",
   "updateModal.btnLater": "나중에",
   "toolbar.exportPDF": "PDF",
-  "tooltip.exportPDF": "PDF로 내보내기"
+  "tooltip.exportPDF": "PDF로 내보내기",
+  "print.previewTitle": "인쇄 미리보기",
+  "print.margin": "여백",
+  "print.marginStandard": "표준 (20mm)",
+  "print.marginNarrow": "좁게 (10mm)",
+  "print.marginWide": "넓게 (30mm)",
+  "print.marginNone": "여백 없음",
+  "print.orientation": "방향",
+  "print.portrait": "세로",
+  "print.landscape": "가로",
+  "print.format": "용지 크기",
+  "print.colorMode": "색상 모드",
+  "print.colorBW": "흑백",
+  "print.colorOriginal": "원본 색상",
+  "print.savePDF": "PDF 저장",
+  "print.close": "닫기",
+  "print.generating": "미리보기 생성 중..."
 }

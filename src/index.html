@@ -477,6 +477,71 @@ the Free Software Foundation, either version 3 of the License.
     </div>
   </div>
 
+  <!-- PRINT PREVIEW MODAL -->
+  <div id="printPreviewModal" class="print-preview-modal-overlay d-none">
+    <div class="print-preview-container shadow-lg">
+      <!-- Left: Settings Panel -->
+      <div class="print-settings-panel">
+        <h4 class="mb-4" data-i18n="print.previewTitle">Pré-visualização de Impressão</h4>
+        
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" data-i18n="print.margin">Margens</label>
+          <select id="printMarginSelect" class="form-select form-select-sm">
+            <option value="20" data-i18n="print.marginStandard">Padrão (20mm)</option>
+            <option value="10" data-i18n="print.marginNarrow">Estreita (10mm)</option>
+            <option value="30" data-i18n="print.marginWide">Ampla (30mm)</option>
+            <option value="0" data-i18n="print.marginNone">Sem Margens</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" data-i18n="print.orientation">Orientação</label>
+          <select id="printOrientationSelect" class="form-select form-select-sm">
+            <option value="portrait" data-i18n="print.portrait">Retrato</option>
+            <option value="landscape" data-i18n="print.landscape">Paisagem</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" data-i18n="print.format">Tamanho do Papel</label>
+          <select id="printFormatSelect" class="form-select form-select-sm">
+            <option value="a4">A4</option>
+            <option value="letter">Letter</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-semibold" data-i18n="print.colorMode">Modo de Cor</label>
+          <select id="printColorModeSelect" class="form-select form-select-sm">
+            <option value="bw" data-i18n="print.colorBW">Preto e Branco</option>
+            <option value="color" data-i18n="print.colorOriginal">Cores Originais</option>
+          </select>
+        </div>
+
+        <div class="d-flex flex-column gap-2 mt-auto">
+          <button id="btnConfirmPrint" class="btn btn-warning py-2 rounded-3 w-100 fw-semibold text-white d-flex align-items-center justify-content-center gap-2">
+            <span class="material-symbols-outlined fs-5">download</span>
+            <span data-i18n="print.savePDF">Salvar PDF</span>
+          </button>
+          <button id="btnClosePrintPreview" class="btn btn-secondary py-2 rounded-3 w-100 fw-semibold" data-i18n="print.close">
+            Fechar
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Live PDF Preview Area -->
+      <div class="print-preview-viewport">
+        <div id="printPreviewLoader" class="preview-loader-overlay">
+          <div class="spinner-border text-warning" role="status">
+            <span class="visually-hidden">Gerando prévia...</span>
+          </div>
+          <span class="mt-2 text-muted-accent small" data-i18n="print.generating">Gerando pré-visualização...</span>
+        </div>
+        <iframe id="printPreviewIframe" class="w-100 h-100 border-0 d-none"></iframe>
+      </div>
+    </div>
+  </div>
+
   <!-- BOOTSTRAP BUNDLE JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

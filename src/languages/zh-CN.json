@@ -126,5 +126,21 @@
   "updateModal.btnDownload": "下载新版本",
   "updateModal.btnLater": "稍后",
   "toolbar.exportPDF": "PDF",
-  "tooltip.exportPDF": "导出为 PDF"
+  "tooltip.exportPDF": "导出为 PDF",
+  "print.previewTitle": "打印预览",
+  "print.margin": "页边距",
+  "print.marginStandard": "标准 (20mm)",
+  "print.marginNarrow": "窄 (10mm)",
+  "print.marginWide": "宽 (30mm)",
+  "print.marginNone": "无边距",
+  "print.orientation": "方向",
+  "print.portrait": "纵向",
+  "print.landscape": "横向",
+  "print.format": "纸张大小",
+  "print.colorMode": "色彩模式",
+  "print.colorBW": "黑白",
+  "print.colorOriginal": "原始颜色",
+  "print.savePDF": "保存 PDF",
+  "print.close": "关闭",
+  "print.generating": "正在生成预览..."
 }

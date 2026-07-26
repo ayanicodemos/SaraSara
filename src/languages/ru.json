@@ -126,5 +126,21 @@
   "updateModal.btnDownload": "Скачать новую версию",
   "updateModal.btnLater": "Позже",
   "toolbar.exportPDF": "PDF",
-  "tooltip.exportPDF": "Экспортировать как PDF"
+  "tooltip.exportPDF": "Экспортировать как PDF",
+  "print.previewTitle": "Предварительный просмотр",
+  "print.margin": "Поля",
+  "print.marginStandard": "Стандартные (20мм)",
+  "print.marginNarrow": "Узкие (10мм)",
+  "print.marginWide": "Широкие (30мм)",
+  "print.marginNone": "Без полей",
+  "print.orientation": "Ориентация",
+  "print.portrait": "Портретная",
+  "print.landscape": "Альбомная",
+  "print.format": "Размер бумаги",
+  "print.colorMode": "Цветовой режим",
+  "print.colorBW": "Черно-белый",
+  "print.colorOriginal": "Оригинальные цвета",
+  "print.savePDF": "Сохранить PDF",
+  "print.close": "Закрыть",
+  "print.generating": "Создание превью..."
 }

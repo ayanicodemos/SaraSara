@@ -126,5 +126,21 @@
   "updateModal.btnDownload": "Baixar Nova Versão",
   "updateModal.btnLater": "Mais Tarde",
   "toolbar.exportPDF": "PDF",
-  "tooltip.exportPDF": "Exportar como PDF"
+  "tooltip.exportPDF": "Exportar como PDF",
+  "print.previewTitle": "Pré-visualização de Impressão",
+  "print.margin": "Margens",
+  "print.marginStandard": "Padrão (20mm)",
+  "print.marginNarrow": "Estreita (10mm)",
+  "print.marginWide": "Ampla (30mm)",
+  "print.marginNone": "Sem Margens",
+  "print.orientation": "Orientação",
+  "print.portrait": "Retrato",
+  "print.landscape": "Paisagem",
+  "print.format": "Tamanho do Papel",
+  "print.colorMode": "Modo de Cor",
+  "print.colorBW": "Preto e Branco",
+  "print.colorOriginal": "Cores Originais",
+  "print.savePDF": "Salvar PDF",
+  "print.close": "Fechar",
+  "print.generating": "Gerando pré-visualização..."
 }

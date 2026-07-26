@@ -1346,6 +1346,12 @@ a:hover {
 
 /* PDF Exporting Styles (simulates print theme on screen for html2pdf) */
 body.exporting-pdf {
+  --bg-app: #ffffff !important;
+  --bg-paper: #ffffff !important;
+  --text-main: #000000 !important;
+  --text-muted: #555555 !important;
+  --text-muted-accent: #333333 !important;
+  --border-color: #d1d1d6 !important;
   background-color: #ffffff !important;
   color: #000000 !important;
 }
@@ -1510,5 +1516,81 @@ body.exporting-pdf .ce-toolbox {
   .custom-image-placeholder {
     display: none !important;
   }
+}
+
+/* PRINT PREVIEW MODAL STYLES */
+.print-preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.print-preview-container {
+  display: flex;
+  width: 90%;
+  height: 90%;
+  background: var(--bg-toolbar);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.print-settings-panel {
+  width: 320px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.print-settings-panel h4 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 18px;
+}
+
+.print-preview-viewport {
+  flex-grow: 1;
+  background: #2c2c2e; /* dark gray viewport background like macOS preview */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+.preview-loader-overlay .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+#printPreviewIframe {
+  background: #2c2c2e;
 }
 
