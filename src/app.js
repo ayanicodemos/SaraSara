@@ -909,7 +909,7 @@ function setupEventListeners() {
 
   document.getElementById('btnSave').addEventListener('click', () => saveActiveDocument(false));
   document.getElementById('btnSaveAs').addEventListener('click', () => saveActiveDocument(true));
-  document.getElementById('btnExportPDF').addEventListener('click', () => window.print());
+  document.getElementById('btnExportPDF').addEventListener('click', () => exportToPDF());
   document.getElementById('btnNewTab').addEventListener('click', () => createNewDocument());
 
   // Keyboard Shortcuts: 
@@ -957,7 +957,7 @@ function setupEventListeners() {
     // Export PDF (Cmd+P / Ctrl+P)
     if ((e.metaKey || e.ctrlKey) && key === 'p') {
       e.preventDefault();
-      window.print();
+      exportToPDF();
     }
   });
 
@@ -2492,6 +2492,49 @@ async function openLocalFile() {
       alert(getTranslation('alert.errorOpen', 'Não foi possível abrir o arquivo.'));
     }
   }
+}
+
+function exportToPDF() {
+  const element = document.getElementById('editorjs');
+  if (!element) return;
+
+  const doc = documents.find(d => d.id === activeDocId);
+  const rawTitle = doc ? doc.title : 'documento.md';
+  const filename = rawTitle.replace(/\.md$/, '').replace(/\.markdown$/, '') + '.pdf';
+
+  // Apply printing style temporarily
+  document.body.classList.add('exporting-pdf');
+
+  // Hide Editor.js toolbar temporarily
+  const ceToolbar = document.querySelector('.ce-toolbar');
+  const plusBtn = document.querySelector('.ce-toolbox');
+  if (ceToolbar) ceToolbar.style.setProperty('display', 'none', 'important');
+  if (plusBtn) plusBtn.style.setProperty('display', 'none', 'important');
+
+  const opt = {
+    margin:       [20, 20, 20, 20], // 20mm standard Margins
+    filename:     filename,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 2, 
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  // Run html2pdf
+  html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
+    document.body.classList.remove('exporting-pdf');
+    if (ceToolbar) ceToolbar.style.removeProperty('display');
+    if (plusBtn) plusBtn.style.removeProperty('display');
+  }).save().catch(err => {
+    console.error('Error generating PDF:', err);
+    document.body.classList.remove('exporting-pdf');
+    if (ceToolbar) ceToolbar.style.removeProperty('display');
+    if (plusBtn) plusBtn.style.removeProperty('display');
+  });
 }
 
 async function saveActiveDocument(forceSaveAs = false) {

@@ -1344,6 +1344,61 @@ a:hover {
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* PDF Exporting Styles (simulates print theme on screen for html2pdf) */
+body.exporting-pdf {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.exporting-pdf .document-sheet {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+body.exporting-pdf .ce-paragraph,
+body.exporting-pdf .ce-header,
+body.exporting-pdf .cdx-list__item,
+body.exporting-pdf .cdx-quote__text,
+body.exporting-pdf .cdx-quote__caption,
+body.exporting-pdf .tc-table td,
+body.exporting-pdf .tc-table th {
+  color: #000000 !important;
+}
+
+body.exporting-pdf .ce-code {
+  background-color: #f5f5f7 !important;
+  border: 1px solid #d1d1d6 !important;
+}
+
+body.exporting-pdf .ce-code__textarea {
+  color: #000000 !important;
+  height: auto !important;
+  overflow: visible !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+
+body.exporting-pdf .custom-image-block img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+body.exporting-pdf .custom-image-placeholder {
+  display: none !important;
+}
+
+body.exporting-pdf .ce-toolbar,
+body.exporting-pdf .ce-settings,
+body.exporting-pdf .ce-conversion-toolbar,
+body.exporting-pdf .tc-popover,
+body.exporting-pdf .ce-toolbox {
+  display: none !important;
+}
+
 /* PRINT / PDF EXPORT STYLING */
 @media print {
   /* Force clean black-on-white layout */

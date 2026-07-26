@@ -5,7 +5,7 @@
   "identifier": "com.sarasara.writer",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "mkdir -p dist && cp -r src/languages dist/ && cp src/index.html src/app.js src/styles.css src/icon.svg src/favicon.ico dist/"
+    "beforeBuildCommand": "mkdir -p dist && cp -r src/languages dist/ && cp src/index.html src/app.js src/styles.css src/icon.svg src/favicon.ico src/html2pdf.bundle.min.js dist/"
   },
   "app": {
     "withGlobalTauri": true,
