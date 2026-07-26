@@ -2726,8 +2726,7 @@ async function savePDFFromPreview() {
       `width: ${formatVal === 'a4' ? (orientationVal === 'portrait' ? 210 : 297) : (orientationVal === 'portrait' ? 216 : 279)}mm`,
       'background: #ffffff',
       'color: #000000',
-      'box-sizing: border-box',
-      'visibility: hidden'
+      'box-sizing: border-box'
     ].join(';');
 
     // Force all text to black and backgrounds to white
