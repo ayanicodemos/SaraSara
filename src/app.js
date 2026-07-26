@@ -2715,59 +2715,49 @@ async function savePDFFromPreview() {
     btnConfirmPrint.disabled = true;
     btnConfirmPrint.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>...`;
 
-    // Build a fully-styled off-screen clone for html2pdf.
-    // This avoids dark-theme CSS variables leaking into the PDF output.
-    const pdfClone = element.cloneNode(true);
-    pdfClone.removeAttribute('id');
-    pdfClone.style.cssText = [
-      'position: fixed',
-      'left: -9999px',
-      'top: 0',
-      `width: ${formatVal === 'a4' ? (orientationVal === 'portrait' ? 210 : 297) : (orientationVal === 'portrait' ? 216 : 279)}mm`,
-      'background: #ffffff',
-      'color: #000000',
-      'box-sizing: border-box'
-    ].join(';');
-
-    // Force all text to black and backgrounds to white
-    pdfClone.querySelectorAll('*').forEach(el => {
-      el.style.setProperty('color', '#000000', 'important');
-      el.style.removeProperty('background-color');
-    });
-    // Remove editor UI elements
-    pdfClone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-    pdfClone.querySelectorAll('.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar').forEach(el => el.remove());
-    document.body.appendChild(pdfClone);
-
     const opt = {
-      margin:       marginVal,
-      filename:     defaultFilename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
+      margin:      marginVal,
+      filename:    defaultFilename,
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        // onclone is called by html2canvas with its own internal DOM clone
+        // before rendering — the perfect place to enforce print styles
+        // without touching the live document.
+        onclone: (_clonedDoc, clonedEl) => {
+          // White background, black text on the root element
+          clonedEl.style.setProperty('background', '#ffffff', 'important');
+          clonedEl.style.setProperty('color',      '#000000', 'important');
+          // Force every descendant to black text, transparent background
+          clonedEl.querySelectorAll('*').forEach(el => {
+            el.style.setProperty('color', '#000000', 'important');
+            el.style.setProperty('background-color', 'transparent', 'important');
+          });
+          // Hide editor-only chrome
+          clonedEl.querySelectorAll(
+            '.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar, .ce-settings'
+          ).forEach(el => el.style.setProperty('display', 'none', 'important'));
+        }
       },
-      jsPDF:        { unit: 'mm', format: formatVal, orientation: orientationVal },
-      pagebreak:    { mode: ['css', 'legacy'], avoid: '.ce-block' }
+      jsPDF:       { unit: 'mm', format: formatVal, orientation: orientationVal },
+      pagebreak:   { mode: ['css', 'legacy'], avoid: '.ce-block' }
     };
 
     try {
       if (window.__TAURI__) {
-        const blob = await html2pdf().set(opt).from(pdfClone).toPdf().outputPdf('blob');
+        const blob = await html2pdf().set(opt).from(element).toPdf().outputPdf('blob');
         const arrayBuffer = await blob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         await window.__TAURI__.fs.writeFile(savePath, uint8Array);
         showNotification(getTranslation('toast.saved', 'Salvo com sucesso!'));
         closePrintPreview();
       } else {
-        await html2pdf().set(opt).from(pdfClone).save();
+        await html2pdf().set(opt).from(element).save();
         closePrintPreview();
       }
-    } finally {
-      document.body.removeChild(pdfClone);
-    }
   } catch (err) {
     console.error('Error saving PDF:', err);
     alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
