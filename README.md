@@ -61,9 +61,15 @@ O **SaraSara** possui uma versão 100% Web que roda inteiramente no navegador (c
 - Salvar (Cmd + S / Ctrl + S): Grava as alterações diretamente no arquivo local.
 - Salvar Como (Cmd + Shift + S / Ctrl + Shift + S): Crie uma nova cópia do documento no diretório de sua escolha.
 
-### 6. Versão 100% Web Sem Instalação
+### 6. Exportação para PDF & Modo Impressão em Tempo Real (A4)
 
-- O SaraSara também pode ser executado diretamente no navegador. Ele salva e gerencia documentos localmente, permitindo exportar o resultado final fazendo o download do arquivo .md.
+- Exportação instantânea para PDF de alta fidelidade e resolução em vetor via botão na barra de ferramentas ou atalho `Cmd + P` / `Ctrl + P`.
+- Modal de Pré-visualização de Impressão interativo com opções de margens, orientação (Retrato/Paisagem), formato (A4/Carta) e modo de cor.
+- Modo Impressão A4 em Tempo Real: ative o checkbox na barra lateral direita para transformar a tela de escrita em folhas A4 virtuais com divisores e numeração de páginas em tempo real enquanto digita.
+
+### 7. Versão 100% Web Sem Instalação
+
+- O SaraSara também pode ser executado diretamente no navegador. Ele salva e gerencia documentos localmente, permitindo exportar o resultado final fazendo o download do arquivo .md ou PDF.
 
 ---
 
@@ -111,11 +117,12 @@ Você pode adicionar novos idiomas ou personalizar as traduções existentes de 
 
 | Atalho | Ação |
 | --- | --- |
-| `$2` / `$2` ou `$2` / `$2` | Criar um Novo Documento (Nova Aba)
-| `$2` / `$2` | Abrir um Arquivo Local
-| `$2` / `$2` | Salvar Alterações no Arquivo Atual
-| `$2` / `$2` | Salvar Como (Gravar Novo Arquivo)
-| `$2` / `$2` | Fechar Aba Ativa (sem encerrar o app) |
+| `Cmd + N` / `Ctrl + N` | Criar um Novo Documento (Nova Aba) |
+| `Cmd + O` / `Ctrl + O` | Abrir um Arquivo Local |
+| `Cmd + S` / `Ctrl + S` | Salvar Alterações no Arquivo Atual |
+| `Cmd + Shift + S` / `Ctrl + Shift + S` | Salvar Como (Gravar Novo Arquivo) |
+| `Cmd + P` / `Ctrl + P` | Exportar para PDF / Pré-visualização de Impressão |
+| `Cmd + W` / `Ctrl + W` | Fechar Aba Ativa (sem encerrar o app) |
 
 ---
 
