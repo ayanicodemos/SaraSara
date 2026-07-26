@@ -531,13 +531,9 @@ the Free Software Foundation, either version 3 of the License.
 
       <!-- Right: Live PDF Preview Area -->
       <div class="print-preview-viewport">
-        <div id="printPreviewLoader" class="preview-loader-overlay">
-          <div class="spinner-border text-warning" role="status">
-            <span class="visually-hidden">Gerando prévia...</span>
-          </div>
-          <span class="mt-2 text-muted-accent small" data-i18n="print.generating">Gerando pré-visualização...</span>
+        <div class="print-preview-scroll-container">
+          <div id="printPreviewContent" class="print-preview-page"></div>
         </div>
-        <iframe id="printPreviewIframe" class="w-100 h-100 border-0 d-none"></iframe>
       </div>
     </div>
   </div>

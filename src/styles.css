@@ -1572,44 +1572,51 @@ body.exporting-pdf .ce-toolbox {
   flex-grow: 1;
   background: #2c2c2e; /* dark gray viewport background like macOS preview */
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
 }
 
-.preview-loader-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
+.print-preview-scroll-container {
   width: 100%;
   height: 100%;
+  overflow-y: auto;
+  padding: 40px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 10;
+  box-sizing: border-box;
 }
 
-.preview-loader-overlay .spinner-border {
-  width: 3rem;
-  height: 3rem;
+.print-preview-page {
+  background: #ffffff;
+  color: #000000;
+  box-sizing: border-box;
+  transform: scale(0.75);
+  transform-origin: top center;
+  margin-bottom: -150px; /* Offset spacing created by scale transform */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
-#printPreviewIframe {
-  background: #2c2c2e;
+/* Ensure inside the print preview page all text follows forced styling (like print) */
+.print-preview-page .ce-paragraph,
+.print-preview-page .ce-header,
+.print-preview-page .cdx-list__item,
+.print-preview-page .cdx-quote__text,
+.print-preview-page .cdx-quote__caption,
+.print-preview-page .tc-table td,
+.print-preview-page .tc-table th {
+  color: #000000 !important;
 }
 
 .btn-print-confirm {
   background: var(--accent-color, #ff9500) !important;
   border: none !important;
   color: white !important;
-  box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3) !important;
   transition: all 0.2s ease !important;
 }
 
 .btn-print-confirm:hover {
-  transform: scale(1.02) !important;
   background: #e08300 !important;
   color: white !important;
 }
