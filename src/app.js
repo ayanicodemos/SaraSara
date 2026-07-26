@@ -2575,12 +2575,15 @@ function generatePreviewPDF() {
   const measurePage = document.createElement('div');
   measurePage.className = 'print-preview-page measure-page';
   measurePage.style.width = pageWidth + 'mm';
-  measurePage.style.minHeight = pageHeight + 'mm';
+  measurePage.style.height = 'auto';
+  measurePage.style.minHeight = '0px';
+  measurePage.style.maxHeight = 'none';
   measurePage.style.padding = marginVal + 'mm';
   measurePage.style.position = 'absolute';
   measurePage.style.left = '-9999px';
   measurePage.style.top = '-9999px';
   measurePage.style.visibility = 'hidden';
+  measurePage.style.boxSizing = 'border-box';
   
   if (colorModeVal === 'bw') {
     measurePage.classList.add('exporting-pdf');
@@ -2607,26 +2610,29 @@ function generatePreviewPDF() {
       });
     }
 
-    // Append to measure page to see if it fits
+    // Append to measure page to calculate new accumulated height
     measurePage.appendChild(blockClone);
     
     // Check height in measurePage
-    const totalHeight = measurePage.scrollHeight - (2 * pxMargin);
+    const currentContentHeight = measurePage.offsetHeight - (2 * pxMargin);
 
-    if (totalHeight > maxContentHeight && contentArea.children.length > 0) {
-      // It doesn't fit on the current page! Start a new page
+    if (currentContentHeight > maxContentHeight && contentArea.children.length > 0) {
+      // Remove blockClone from measurePage so measurePage reflects the page break
+      blockClone.remove();
+      
+      // Start a new page
       currentPage = createPreviewPageElement(pageWidth, pageHeight, marginVal, colorModeVal);
       previewWrapper.appendChild(currentPage);
       contentArea = currentPage.querySelector('.page-content-area');
       
-      // Move this block to the new page content area
+      // Append blockClone to the new page content area
       contentArea.appendChild(blockClone);
       
-      // Reset measurePage for the new page calculation
+      // Reset measurePage for the new page calculation and add blockClone to it
       measurePage.innerHTML = '';
       measurePage.appendChild(blockClone);
     } else {
-      // It fits on the current page! Append it
+      // It fits on the current page! Append it to contentArea
       contentArea.appendChild(blockClone);
     }
   });
