@@ -2540,153 +2540,58 @@ let isGeneratingPreview = false;
 
 async function generatePreviewPDF() {
   const element = document.getElementById('editorjs');
-  if (!element || isGeneratingPreview) return;
+  if (!element) return;
 
-  const previewWrapper = document.getElementById('printPreviewWrapper');
-  const loader = document.getElementById('printPreviewLoader');
-  if (!previewWrapper) return;
+  const previewSheet = document.getElementById('printPreviewSheet');
+  if (!previewSheet) return;
 
-  isGeneratingPreview = true;
-  if (loader) loader.classList.remove('d-none');
+  // Clear previous preview
+  previewSheet.innerHTML = '';
 
-  try {
-    const marginVal = parseInt(document.getElementById('printMarginSelect').value);
-    const orientationVal = document.getElementById('printOrientationSelect').value;
-    const formatVal = document.getElementById('printFormatSelect').value;
-    const colorModeVal = document.getElementById('printColorModeSelect').value;
+  const marginVal = parseInt(document.getElementById('printMarginSelect').value);
+  const orientationVal = document.getElementById('printOrientationSelect').value;
+  const formatVal = document.getElementById('printFormatSelect').value;
+  const colorModeVal = document.getElementById('printColorModeSelect').value;
 
-    // Determine paper dimensions in mm
-    let pageWidthMm, pageHeightMm;
-    if (formatVal === 'a4') {
-      pageWidthMm = orientationVal === 'portrait' ? 210 : 297;
-      pageHeightMm = orientationVal === 'portrait' ? 297 : 210;
-    } else { // letter
-      pageWidthMm = orientationVal === 'portrait' ? 216 : 279;
-      pageHeightMm = orientationVal === 'portrait' ? 279 : 216;
-    }
-
-    const pageAspectRatio = pageHeightMm / pageWidthMm;
-
-    // Create temporary off-screen container for rendering
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '-9999px';
-    const containerWidthPx = 800; // Fixed high-res base rendering width
-    container.style.width = containerWidthPx + 'px';
-    
-    // Calculate padding in px based on marginVal / pageWidthMm ratio
-    const marginPx = Math.round(containerWidthPx * (marginVal / pageWidthMm));
-    container.style.padding = marginPx + 'px';
-    container.style.boxSizing = 'border-box';
-    container.style.backgroundColor = '#ffffff';
-
-    // Clone editor content into container
-    const clone = element.cloneNode(true);
-    clone.removeAttribute('id');
-    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-
-    // Apply color mode
-    if (colorModeVal === 'bw') {
-      container.classList.add('exporting-pdf');
-      clone.querySelectorAll('*').forEach(el => el.style.setProperty('color', '#000000', 'important'));
-    }
-
-    // Hide Editor.js toolbar controls
-    const ceToolbar = clone.querySelector('.ce-toolbar');
-    const plusBtn = clone.querySelector('.ce-toolbox');
-    if (ceToolbar) ceToolbar.style.display = 'none';
-    if (plusBtn) plusBtn.style.display = 'none';
-
-    container.appendChild(clone);
-    document.body.appendChild(container);
-
-    // Calculate Page Break Spacers so no .ce-block is sliced
-    const pagePxHeight = Math.round(containerWidthPx * pageAspectRatio);
-    const printablePxHeight = pagePxHeight - (2 * marginPx);
-
-    const blocks = container.querySelectorAll('.ce-block');
-
-    blocks.forEach(block => {
-      const blockTop = block.offsetTop;
-      const blockHeight = block.offsetHeight;
-
-      // Determine which page this block's top falls into (0-indexed)
-      const pageIndex = Math.floor(blockTop / printablePxHeight);
-      const pageBottomLimit = (pageIndex + 1) * printablePxHeight;
-
-      // If the block extends past the current page boundary, insert a spacer before it
-      if (blockTop + blockHeight > pageBottomLimit && blockHeight <= printablePxHeight) {
-        const spacerNeeded = pageBottomLimit - blockTop;
-        if (spacerNeeded > 0 && spacerNeeded < printablePxHeight) {
-          const spacer = document.createElement('div');
-          spacer.style.height = spacerNeeded + 'px';
-          spacer.style.width = '100%';
-          spacer.className = 'print-page-break-spacer';
-          block.parentNode.insertBefore(spacer, block);
-        }
-      }
-    });
-
-    // Render container to canvas using html2canvas
-    const canvas = await html2canvas(container, {
-      scale: 1.5,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
-
-    // Remove temporary container from DOM
-    document.body.removeChild(container);
-
-    // Calculate canvas page height
-    const scaledPagePxHeight = Math.round(canvas.width * pageAspectRatio);
-    const totalPages = Math.max(1, Math.ceil(canvas.height / scaledPagePxHeight));
-
-    // Clear previous preview images
-    previewWrapper.innerHTML = '';
-
-    // Slice canvas into individual page images
-    for (let i = 0; i < totalPages; i++) {
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = scaledPagePxHeight;
-
-      const ctx = pageCanvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-
-      // Draw slice of main canvas
-      const sourceY = i * scaledPagePxHeight;
-      const sourceHeight = Math.min(scaledPagePxHeight, canvas.height - sourceY);
-
-      ctx.drawImage(
-        canvas,
-        0, sourceY, canvas.width, sourceHeight,
-        0, 0, canvas.width, sourceHeight
-      );
-
-      const pageImgDataUrl = pageCanvas.toDataURL('image/png');
-
-      // Create page element wrapper
-      const pageEl = document.createElement('div');
-      pageEl.className = 'print-preview-page';
-      pageEl.style.width = pageWidthMm + 'mm';
-      pageEl.style.height = pageHeightMm + 'mm';
-
-      const img = document.createElement('img');
-      img.src = pageImgDataUrl;
-      img.alt = `Página ${i + 1}`;
-
-      pageEl.appendChild(img);
-      previewWrapper.appendChild(pageEl);
-    }
-  } catch (err) {
-    console.error('Error generating canvas preview:', err);
-  } finally {
-    isGeneratingPreview = false;
-    if (loader) loader.classList.add('d-none');
+  // Apply paper dimensions
+  let widthMm, minHeightMm;
+  if (formatVal === 'a4') {
+    widthMm = orientationVal === 'portrait' ? 210 : 297;
+    minHeightMm = orientationVal === 'portrait' ? 297 : 210;
+  } else { // letter
+    widthMm = orientationVal === 'portrait' ? 216 : 279;
+    minHeightMm = orientationVal === 'portrait' ? 279 : 216;
   }
+
+  previewSheet.style.width = widthMm + 'mm';
+  previewSheet.style.minHeight = minHeightMm + 'mm';
+  previewSheet.style.padding = marginVal + 'mm';
+
+  // Clone content
+  const clone = element.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+
+  // Hide toolbars inside clone
+  const ceToolbar = clone.querySelector('.ce-toolbar');
+  const plusBtn = clone.querySelector('.ce-toolbox');
+  if (ceToolbar) ceToolbar.style.display = 'none';
+  if (plusBtn) plusBtn.style.display = 'none';
+
+  // Apply color mode
+  if (colorModeVal === 'bw') {
+    previewSheet.classList.add('exporting-pdf');
+    clone.querySelectorAll('*').forEach(el => {
+      el.style.setProperty('color', '#000000', 'important');
+    });
+  } else {
+    previewSheet.classList.remove('exporting-pdf');
+    clone.querySelectorAll('*').forEach(el => {
+      el.style.removeProperty('color');
+    });
+  }
+
+  previewSheet.appendChild(clone);
 }
 
 async function savePDFFromPreview() {
@@ -2702,11 +2607,8 @@ async function savePDFFromPreview() {
   const rawTitle = doc ? doc.title : 'documento.md';
   const defaultFilename = rawTitle.replace(/\.md$/, '').replace(/\.markdown$/, '') + '.pdf';
 
-  // Show a visual loading state or text on save button
   const btnConfirmPrint = document.getElementById('btnConfirmPrint');
   const originalText = btnConfirmPrint.innerHTML;
-  btnConfirmPrint.disabled = true;
-  btnConfirmPrint.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>...`;
 
   try {
     let savePath = null;
@@ -2719,12 +2621,11 @@ async function savePDFFromPreview() {
         defaultPath: defaultFilename
       });
 
-      if (!savePath) {
-        btnConfirmPrint.disabled = false;
-        btnConfirmPrint.innerHTML = originalText;
-        return;
-      }
+      if (!savePath) return;
     }
+
+    btnConfirmPrint.disabled = true;
+    btnConfirmPrint.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>...`;
 
     // Force styling temporarily
     if (colorModeVal === 'bw') {
@@ -2763,15 +2664,15 @@ async function savePDFFromPreview() {
       await html2pdf().set(opt).from(element).save();
       closePrintPreview();
     }
-
-    // Clean up
-    document.body.classList.remove('exporting-pdf');
-    if (ceToolbar) ceToolbar.style.removeProperty('display');
-    if (plusBtn) plusBtn.style.removeProperty('display');
   } catch (err) {
     console.error('Error saving PDF:', err);
     alert(getTranslation('alert.errorSave', 'Não foi possível salvar o arquivo.'));
   } finally {
+    document.body.classList.remove('exporting-pdf');
+    const ceToolbar = document.querySelector('.ce-toolbar');
+    const plusBtn = document.querySelector('.ce-toolbox');
+    if (ceToolbar) ceToolbar.style.removeProperty('display');
+    if (plusBtn) plusBtn.style.removeProperty('display');
     btnConfirmPrint.disabled = false;
     btnConfirmPrint.innerHTML = originalText;
   }
@@ -2781,8 +2682,8 @@ function closePrintPreview() {
   const modal = document.getElementById('printPreviewModal');
   if (modal) modal.classList.add('d-none');
   
-  const previewWrapper = document.getElementById('printPreviewWrapper');
-  if (previewWrapper) previewWrapper.innerHTML = '';
+  const previewSheet = document.getElementById('printPreviewSheet');
+  if (previewSheet) previewSheet.innerHTML = '';
   
   document.body.classList.remove('exporting-pdf');
 }

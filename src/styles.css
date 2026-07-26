@@ -1575,53 +1575,53 @@ body.exporting-pdf .ce-toolbox {
   overflow: hidden;
 }
 
-.preview-loader-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(44, 44, 46, 0.85);
-  backdrop-filter: blur(4px);
-  z-index: 20;
-}
-
 .print-preview-scroll-container {
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  padding: 40px 20px;
   box-sizing: border-box;
-}
-
-.print-preview-wrapper {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  padding: 40px 20px 180px 20px; /* high bottom padding to compensate for scaled space */
-  transform: scale(0.75);
-  transform-origin: top center;
+  justify-content: center;
+  align-items: flex-start;
 }
 
-.print-preview-page {
+.print-preview-document-sheet {
   background: #ffffff;
   color: #000000;
   box-sizing: border-box;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  position: relative;
-  flex-shrink: 0;
-  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  margin: 0 auto;
+  transition: all 0.2s ease;
 }
 
-.print-preview-page img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
+.print-preview-document-sheet.exporting-pdf,
+.print-preview-document-sheet.exporting-pdf * {
+  color: #000000 !important;
+}
+
+.btn-print-confirm {
+  background: var(--accent-color, #ff9500) !important;
+  border: none !important;
+  color: white !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-print-confirm:hover {
+  background: #e08300 !important;
+  color: white !important;
+}
+
+.btn-print-cancel {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-print-cancel:hover {
+  background: var(--bg-button-hover) !important;
+  color: var(--text-main) !important;
 }
 
 /* Ensure inside the print preview page all text follows forced styling (like print) */
