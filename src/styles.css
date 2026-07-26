@@ -1345,7 +1345,8 @@ a:hover {
 }
 
 /* PDF Exporting Styles (simulates print theme on screen for html2pdf) */
-body.exporting-pdf {
+body.exporting-pdf,
+:root[data-theme="dark"] body.exporting-pdf {
   --bg-app: #ffffff !important;
   --bg-paper: #ffffff !important;
   --text-main: #000000 !important;
@@ -1353,6 +1354,11 @@ body.exporting-pdf {
   --text-muted-accent: #333333 !important;
   --border-color: #d1d1d6 !important;
   background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.exporting-pdf #editorjs,
+body.exporting-pdf #editorjs * {
   color: #000000 !important;
 }
 
