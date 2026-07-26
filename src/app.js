@@ -2725,22 +2725,33 @@ async function savePDFFromPreview() {
         logging: false,
         backgroundColor: '#ffffff',
         // html2canvas calls onclone with ONE argument: the cloned document.
-        // We find our element by id within that clone.
         onclone: (clonedDoc) => {
-          const clonedEl = clonedDoc.getElementById('editorjs');
-          if (!clonedEl) return;
-          // White background + black text on root element
-          clonedEl.style.setProperty('background', '#ffffff', 'important');
-          clonedEl.style.setProperty('color',      '#000000', 'important');
-          // Force every descendant: black text, transparent background
-          clonedEl.querySelectorAll('*').forEach(el => {
-            el.style.setProperty('color',            '#000000',     'important');
-            el.style.setProperty('background-color', 'transparent', 'important');
-          });
-          // Hide editor-only chrome that must not appear in the PDF
-          clonedEl.querySelectorAll(
-            '.ce-toolbar, .ce-toolbox, .ce-popover, .ce-inline-toolbar, .ce-settings'
-          ).forEach(el => el.style.setProperty('display', 'none', 'important'));
+          // Remove dark-theme so all dark-mode CSS rules stop applying
+          clonedDoc.body.classList.remove('dark-theme');
+          clonedDoc.body.classList.add('light-theme');
+
+          // Inject a print stylesheet that forces black text on white background.
+          // We use -webkit-text-fill-color because WKWebView uses that for
+          // actual text paint — overriding only `color` is not enough.
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            body, body * {
+              color: #000000 !important;
+              -webkit-text-fill-color: #000000 !important;
+              background-color: transparent !important;
+              text-shadow: none !important;
+              box-shadow: none !important;
+              opacity: 1 !important;
+            }
+            #editorjs {
+              background: #ffffff !important;
+            }
+            .ce-toolbar, .ce-toolbox, .ce-popover,
+            .ce-inline-toolbar, .ce-settings {
+              display: none !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
         }
       },
       jsPDF:       { unit: 'mm', format: formatVal, orientation: orientationVal },
