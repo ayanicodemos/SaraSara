@@ -1679,6 +1679,60 @@ body.exporting-pdf .ce-toolbox {
   color: #000000 !important;
 }
 
+/* LIVE PRINT LAYOUT MODE (A4 EDITOR VIEW) */
+body.print-layout-active .document-page-wrapper {
+  max-width: 210mm;
+  margin: 20px auto;
+  transition: all 0.3s ease;
+}
+
+body.print-layout-active .document-sheet {
+  background-color: var(--bg-paper) !important;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  padding: 20mm 20mm !important;
+  box-sizing: border-box !important;
+  position: relative;
+}
+
+body.print-layout-active .print-page-break-gap {
+  width: 100%;
+  margin: 35px 0;
+  position: relative;
+  user-select: none;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.print-layout-active .print-page-break-gap::before {
+  content: '';
+  position: absolute;
+  left: -20mm;
+  right: -20mm;
+  top: 50%;
+  border-top: 2px dashed var(--accent-color, #ff9500);
+  opacity: 0.6;
+  z-index: 1;
+}
+
+body.print-layout-active .print-page-break-badge {
+  position: relative;
+  z-index: 2;
+  background: var(--bg-secondary, #2c2c2e);
+  color: var(--accent-color, #ff9500);
+  border: 1px solid var(--accent-color, #ff9500);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 .btn-print-confirm {
   background: var(--accent-color, #ff9500) !important;
   border: none !important;

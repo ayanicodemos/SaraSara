@@ -42,6 +42,7 @@
   "sidebar.lists": "箇条書きとリスト",
   "sidebar.listNone": "なし",
   "sidebar.stats": "統計情報",
+  "sidebar.printMode": "印刷モード (A4)",
   "sidebar.words": "単語数:",
   "sidebar.chars": "文字数:",
   "sidebar.readTime": "読了時間:",

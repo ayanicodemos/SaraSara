@@ -42,6 +42,7 @@
   "sidebar.lists": "列表与项目符号",
   "sidebar.listNone": "无",
   "sidebar.stats": "统计数据",
+  "sidebar.printMode": "打印模式 (A4)",
   "sidebar.words": "字数:",
   "sidebar.chars": "字符数:",
   "sidebar.readTime": "阅读时间:",

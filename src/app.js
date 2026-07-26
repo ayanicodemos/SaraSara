@@ -716,6 +716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     applyTranslations();
     initEditor();
+    setupPrintLayoutToggle();
     
     if (window.__TAURI__) {
       checkAppUpdates();
@@ -2176,6 +2177,7 @@ async function switchDocument(docId) {
       updateOutline();
       updateStats();
       setTimeout(updateActiveBlockStylesInSidebar, 100);
+      if (isPrintLayoutMode) setTimeout(updateLivePrintLayout, 250);
     } catch (e) {
       isRendering = false;
       console.error("Erro ao carregar documento na troca de aba:", e);
@@ -2534,6 +2536,102 @@ function setupPrintPreviewListeners() {
   
   btnConfirmPrint.onclick = savePDFFromPreview;
   btnClosePrintPreview.onclick = closePrintPreview;
+}
+
+let isPrintLayoutMode = false;
+let printLayoutObserver = null;
+
+function setupPrintLayoutToggle() {
+  const chkPrintLayoutMode = document.getElementById('chkPrintLayoutMode');
+  if (!chkPrintLayoutMode) return;
+
+  chkPrintLayoutMode.addEventListener('change', (e) => {
+    isPrintLayoutMode = e.target.checked;
+    if (isPrintLayoutMode) {
+      document.body.classList.add('print-layout-active');
+      updateLivePrintLayout();
+      setupPrintLayoutObserver();
+    } else {
+      document.body.classList.remove('print-layout-active');
+      clearLivePrintLayout();
+      teardownPrintLayoutObserver();
+    }
+  });
+}
+
+function updateLivePrintLayout() {
+  if (!isPrintLayoutMode) return;
+
+  const element = document.getElementById('editorjs');
+  if (!element) return;
+
+  clearLivePrintLayout();
+
+  const sourceBlocks = element.querySelectorAll('.ce-block');
+  if (sourceBlocks.length === 0) return;
+
+  const probe = document.createElement('div');
+  probe.style.cssText = 'height: 1mm; width: 1px; position: fixed; left: -9999px; top: 0;';
+  document.body.appendChild(probe);
+  const pxPerMm = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+
+  // A4 content height: 297mm - 40mm margins = 257mm
+  const maxContentPx = 257 * pxPerMm;
+
+  let accumulated = 0;
+  let pageIndex = 1;
+
+  sourceBlocks.forEach(block => {
+    const blockH = block.getBoundingClientRect().height;
+
+    if (accumulated + blockH > maxContentPx && accumulated > 0) {
+      pageIndex++;
+      const gap = document.createElement('div');
+      gap.className = 'print-page-break-gap';
+
+      const badge = document.createElement('div');
+      badge.className = 'print-page-break-badge';
+      badge.textContent = `Página ${pageIndex}`;
+      gap.appendChild(badge);
+
+      block.parentNode.insertBefore(gap, block);
+      accumulated = 0;
+    }
+
+    accumulated += blockH;
+  });
+}
+
+function clearLivePrintLayout() {
+  const gaps = document.querySelectorAll('.print-page-break-gap');
+  gaps.forEach(gap => gap.remove());
+}
+
+function setupPrintLayoutObserver() {
+  teardownPrintLayoutObserver();
+  const element = document.getElementById('editorjs');
+  if (!element) return;
+
+  printLayoutObserver = new MutationObserver(() => {
+    if (isPrintLayoutMode) {
+      clearTimeout(window.__printLayoutTimer);
+      window.__printLayoutTimer = setTimeout(updateLivePrintLayout, 200);
+    }
+  });
+
+  printLayoutObserver.observe(element, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+}
+
+function teardownPrintLayoutObserver() {
+  if (printLayoutObserver) {
+    printLayoutObserver.disconnect();
+    printLayoutObserver = null;
+  }
 }
 
 let isGeneratingPreview = false;

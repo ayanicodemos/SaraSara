@@ -42,6 +42,7 @@
   "sidebar.lists": "글머리 기호 및 목록",
   "sidebar.listNone": "없음",
   "sidebar.stats": "통계",
+  "sidebar.printMode": "인쇄 모드 (A4)",
   "sidebar.words": "단어 수:",
   "sidebar.chars": "글자 수:",
   "sidebar.readTime": "읽기 시간:",
